@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mudra Presentation Controller</title>
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  :root {
+    --bg: #ffffff;
+    --card: #f8fafc;
+    --slide-bg: #ffffff;
+    --primary: #0d9488;
+    --accent: #14b8a6;
+    --text: #0f172a;
+    --text-dim: #64748b;
+    --success: #16a34a;
+    --warning: #d97706;
+    --error: #dc2626;
+    --border: rgba(15,23,42,0.10);
+    --surface: rgba(15,23,42,0.04);
+    --hover: rgba(13,148,136,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .brand { font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
+  .brand span { color: var(--primary); }
+  .conn-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warning); transition: all 200ms; flex-shrink: 0; }
+  .conn-dot.live { background: var(--success); box-shadow: 0 0 0 3px rgba(22,163,74,0.15); }
+  .conn-label { font-size: 12px; color: var(--text-dim); }
+  .slide-counter { font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .slide-counter b { color: var(--primary); font-weight: 700; }
+
+  /* ── Slide area ── */
+  .slide-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--slide-bg);
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 64px;
+    text-align: center;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s;
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  .slide.active { opacity: 1; transform: translateX(0); }
+  .slide.prev   { opacity: 0; transform: translateX(-100%); }
+
+  .slide .tag {
+    display: inline-block;
+    background: var(--hover);
+    color: var(--primary);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid rgba(13,148,136,0.2);
+  }
+  .slide h1 {
+    font-size: clamp(30px, 5.5vw, 58px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 18px;
+    letter-spacing: -0.02em;
+  }
+  .slide h1 em { font-style: normal; color: var(--primary); }
+  .slide p {
+    font-size: clamp(15px, 2vw, 19px);
+    color: var(--text-dim);
+    max-width: 620px;
+    line-height: 1.65;
+  }
+  .slide ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 24px;
+    max-width: 700px;
+  }
+  .slide ul li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .slide .big-stat {
+    font-size: clamp(64px, 10vw, 110px);
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+    margin: 10px 0;
+    letter-spacing: -0.04em;
+  }
+  .slide .caption {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-top: 10px;
+  }
+
+  /* Laser dot */
+  .laser {
+    position: fixed;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--error);
+    box-shadow: 0 0 20px rgba(220,38,38,0.9), 0 0 50px rgba(220,38,38,0.5);
+    pointer-events: none;
+    z-index: 90;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.15s, width 0.1s, height 0.1s;
+  }
+  .laser.on { opacity: 1; animation: laser-pulse 1.8s ease-in-out infinite; }
+  @keyframes laser-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.9), 0 0 50px rgba(220,38,38,0.5); }
+    50% { box-shadow: 0 0 30px rgba(220,38,38,1), 0 0 70px rgba(220,38,38,0.7); }
+  }
+
+  /* Blackout overlay */
+  .blackout {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 150;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .blackout.on { opacity: 1; pointer-events: auto; }
+  .blackout-hint {
+    color: rgba(255,255,255,0.35);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Presenter notes */
+  .notes {
+    position: fixed;
+    right: 16px;
+    top: 60px;
+    width: 280px;
+    max-height: 50vh;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    z-index: 120;
+    opacity: 0;
+    transform: translateX(20px);
+    pointer-events: none;
+    transition: all 0.25s;
+    overflow-y: auto;
+  }
+  .notes.on { opacity: 1; transform: translateX(0); pointer-events: auto; }
+  .notes h3 { font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .notes p { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 18px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 12px; }
+  .nav-dots { display: flex; gap: 6px; }
+  .nav-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 150ms, transform 150ms;
+  }
+  .nav-dot.active { background: var(--primary); border-color: var(--primary); transform: scale(1.15); }
+  .nav-dot:hover { border-color: var(--primary); }
+
+  .meter { display: flex; align-items: center; gap: 8px; }
+  .meter-lbl { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .meter-bar { width: 90px; height: 6px; background: var(--surface); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--primary)); border-radius: 99px; transition: width 70ms; width: 50%; }
+  .meter-val { font-size: 11px; color: var(--text-dim); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    transition: all 150ms;
+    white-space: nowrap;
+  }
+  .badge.active { background: rgba(220,38,38,0.08); color: var(--error); border-color: rgba(220,38,38,0.3); font-weight: 600; }
+  .badge .dot-small { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── Simulator strip ── */
+  .sim-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: rgba(13,148,136,0.04);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    font-size: 11px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .sim-lbl {
+    font-size: 10px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .sim-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding-right: 10px;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sim-group:last-child { border-right: none; }
+  .sim-group-lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 5px;
+    font-weight: 600;
+  }
+
+  .btn, .sim-btn {
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 120ms;
+    white-space: nowrap;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .sim-btn { padding: 3px 8px; font-size: 10px; min-width: 26px; text-align: center; }
+  .btn:hover, .sim-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--hover); }
+  .sim-btn:active { transform: scale(0.95); background: var(--primary); color: #fff; }
+
+  .sim-slider { display: flex; align-items: center; gap: 6px; }
+  .sim-slider input[type=range] { width: 80px; accent-color: var(--primary); }
+  .sim-slider-val { font-size: 10px; color: var(--text-dim); min-width: 28px; font-variant-numeric: tabular-nums; }
+
+  /* ── HUD ── */
+  .hud {
+    position: fixed;
+    bottom: 70px; left: 14px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+    line-height: 1.7;
+    min-width: 150px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    backdrop-filter: blur(6px);
+  }
+  .hud-row { display: flex; justify-content: space-between; gap: 14px; }
+  .hud-val { color: var(--text); font-weight: 500; }
+
+  .mudra-badge {
+    position: fixed;
+    bottom: 10px; right: 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 200;
+    letter-spacing: 0.04em;
+  }
+
+  @media (max-width: 720px) {
+    .slide { padding: 32px 24px; }
+    .hud { display: none; }
+    .notes { width: 220px; right: 10px; top: 52px; }
+    .meter-bar { width: 60px; }
+    .sim-slider input[type=range] { width: 55px; }
+    .header { padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-left">
+    <div class="brand"><span>Mudra</span> Presentation Controller</div>
+    <span class="conn-dot" id="connDot"></span>
+    <span class="conn-label" id="connLabel">Connecting…</span>
+  </div>
+  <div class="header-left">
+    <div class="slide-counter"><b id="slideNum">1</b> / <span id="slideTotal">8</span></div>
+  </div>
+</div>
+
+<!-- ── Slide area ── -->
+<div class="slide-area" id="slideArea">
+  <div class="slide active">
+    <div class="tag">Welcome</div>
+    <h1>Present with <em>Neural Input</em></h1>
+    <p>Control your slides with natural micro-gestures from your wrist. No clicker, no remote — just your hand.</p>
+  </div>
+  <div class="slide">
+    <div class="tag">The Problem</div>
+    <h1>Clickers Are <em>Outdated</em></h1>
+    <p>Remotes get lost, drain batteries, and tether you to hardware. Neural input removes every friction point.</p>
+  </div>
+  <div class="slide">
+    <div class="tag">Technology</div>
+    <h1>How <em>Mudra</em> Works</h1>
+    <p>The Mudra wristband reads surface EMG signals from your wrist — detecting finger micro-gestures in milliseconds with no visible hand motion required.</p>
+    <ul>
+      <li>sEMG sensing</li>
+      <li>Low-latency ML</li>
+      <li>Wrist-worn</li>
+    </ul>
+  </div>
+  <div class="slide">
+    <div class="tag">Precision</div>
+    <div class="big-stat">&lt; 20ms</div>
+    <p class="caption">End-to-end gesture latency — faster than a human reflex.</p>
+  </div>
+  <div class="slide">
+    <div class="tag">Gestures</div>
+    <h1>Four Core <em>Signals</em></h1>
+    <ul>
+      <li>Tap — advance</li>
+      <li>Double-tap — back</li>
+      <li>Twist — laser pointer</li>
+      <li>Swipe — navigate</li>
+    </ul>
+  </div>
+  <div class="slide">
+    <div class="tag">Hands-free</div>
+    <h1>Gesture. <em>Anywhere.</em></h1>
+    <p>Pockets. Behind your back. Across the room. The band reads nerve signals, not motion — so it works in any posture.</p>
+  </div>
+  <div class="slide">
+    <div class="tag">Results</div>
+    <div class="big-stat">93%</div>
+    <p class="caption">Of users preferred Mudra over a traditional clicker after 3 minutes.</p>
+  </div>
+  <div class="slide">
+    <div class="tag">Thank you</div>
+    <h1>Questions?</h1>
+    <p>Reach out at <em>mudra.com</em></p>
+  </div>
+</div>
+
+<!-- Presenter notes -->
+<div class="notes" id="notes">
+  <h3>Presenter Notes</h3>
+  <p id="notesText">Opening slide. Set the stage — emphasize that this is a live demonstration controlled by the band on the presenter's wrist.</p>
+</div>
+
+<!-- Laser pointer -->
+<div class="laser" id="laser"></div>
+
+<!-- Blackout -->
+<div class="blackout" id="blackout"><div class="blackout-hint">— blackout —  tap to resume —</div></div>
+
+<!-- Telemetry HUD -->
+<div class="hud">
+  <div class="hud-row"><span>Gesture</span><span class="hud-val" id="hudGesture">—</span></div>
+  <div class="hud-row"><span>Direction</span><span class="hud-val" id="hudDir">—</span></div>
+  <div class="hud-row"><span>Pressure</span><span class="hud-val" id="hudPres">—</span></div>
+  <div class="hud-row"><span>Laser</span><span class="hud-val" id="hudLaser">off</span></div>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button class="btn" id="prevBtn" title="Previous (←)">&larr; Prev</button>
+    <button class="btn" id="nextBtn" title="Next (→)">Next &rarr;</button>
+    <div class="nav-dots" id="navDots"></div>
+  </div>
+  <div class="toolbar-right">
+    <span class="badge" id="laserBadge"><span class="dot-small"></span> Laser</span>
+    <span class="badge" id="notesBadge"><span class="dot-small"></span> Notes</span>
+    <div class="meter">
+      <span class="meter-lbl">Pressure</span>
+      <div class="meter-bar"><div class="meter-fill" id="presFill"></div></div>
+      <span class="meter-val" id="presVal">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Simulator strip (required) ── -->
+<div class="sim-strip">
+  <span class="sim-lbl">Sim</span>
+
+  <div class="sim-group">
+    <span class="sim-group-lbl">Gesture</span>
+    <button class="sim-btn" data-g="tap">Tap</button>
+    <button class="sim-btn" data-g="double_tap">2Tap</button>
+    <button class="sim-btn" data-g="twist">Twist</button>
+    <button class="sim-btn" data-g="double_twist">2Tw</button>
+  </div>
+
+  <div class="sim-group">
+    <span class="sim-group-lbl">Dir</span>
+    <button class="sim-btn" data-d="Up">&uarr;</button>
+    <button class="sim-btn" data-d="Down">&darr;</button>
+    <button class="sim-btn" data-d="Left">&larr;</button>
+    <button class="sim-btn" data-d="Right">&rarr;</button>
+    <button class="sim-btn" data-d="Roll Left">RL</button>
+    <button class="sim-btn" data-d="Roll Right">RR</button>
+  </div>
+
+  <div class="sim-group">
+    <span class="sim-group-lbl">Pressure</span>
+    <div class="sim-slider">
+      <input type="range" id="simPressure" min="0" max="100" value="0">
+      <span class="sim-slider-val" id="simPressureVal">0%</span>
+    </div>
+  </div>
+</div>
+
+<div class="mudra-badge">Powered by Mudra Band</div>
+
+<script>
+// ── Mock WebSocket (auto-activates when real WS is blocked) ──────────────
+class MudraWebSocket {
+  constructor(url) {
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._timers = [];
+    this._useMock = false;
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen    = (e) => { this._useMock = false; this._trigger('open', e); };
+      this._ws.onmessage = (e) => this._trigger('message', e);
+      this._ws.onclose   = (e) => this._trigger('close', e);
+      this._ws.onerror   = ()  => { this._startMock(); };
+    } catch (e) {
+      this._startMock();
+    }
+  }
+  set onopen(fn)    { this._handlers.open    = fn; }
+  set onmessage(fn) { this._handlers.message = fn; }
+  set onclose(fn)   { this._handlers.close   = fn; }
+  set onerror(fn)   { this._handlers.error   = fn; }
+  _trigger(event, data) { if (this._handlers[event]) this._handlers[event](data); }
+  _emit(payload) { this._trigger('message', { data: JSON.stringify(payload) }); }
+  send(raw) {
+    if (!this._useMock) { this._ws.send(raw); return; }
+    const cmd = JSON.parse(raw);
+    if (cmd.command === 'subscribe') this._subscriptions.add(cmd.signal);
+    if (cmd.command === 'trigger_gesture') {
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 0.99, timestamp: Date.now() }, timestamp: Date.now() });
+    }
+  }
+  _startMock() {
+    this._useMock = true;
+    setTimeout(() => {
+      this._trigger('open', {});
+      this._emit({ type: 'connection_status', data: { status: 'connected', message: 'Mudra Companion ready (simulated)' }, timestamp: Date.now() });
+    }, 100);
+    // Note: mock does not auto-emit signals here — the user drives everything via the simulator panel.
+  }
+  close() {
+    this._timers.forEach(t => clearInterval(t));
+    if (!this._useMock && this._ws) this._ws.close();
+  }
+}
+
+// ── State ──────────────────────────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+const TOTAL = slides.length;
+let current = 0;
+let laserOn = false;
+let notesOn = false;
+let blackout = false;
+let pressure = 0;
+
+const NOTES_TEXT = [
+  'Opening slide. Set the stage — emphasize this is a live demo controlled by the band on your wrist.',
+  'Pause here. Let the audience feel the friction of old-school clickers before introducing the alternative.',
+  'Show the wristband if you have one. Explain sEMG in one sentence — "we read the tiny nerve signals for finger motion before your finger actually moves."',
+  'This is the wow stat — let it sit on screen for 3 seconds before moving on.',
+  'Walk the audience through each gesture. Demo each one live: tap, double-tap, twist, swipe.',
+  'This is the emotional beat — total freedom. Consider presenting this slide with your hands in your pockets.',
+  'Close on the outcome data. Attribute it clearly: user study, April 2025, N=38.',
+  'End on the invite. Leave the URL on screen while you open Q&A.',
+];
+
+// ── Slide navigation ──────────────────────────────────────────────────
+function goTo(index) {
+  if (blackout) return;
+  const next = Math.max(0, Math.min(TOTAL - 1, index));
+  if (next === current) return;
+  slides[current].classList.remove('active');
+  slides[current].classList.add(next > current ? 'prev' : '');
+  slides[next].classList.remove('prev');
+  slides[next].classList.add('active');
+  // Reset non-adjacent
+  slides.forEach((s, i) => {
+    if (i !== next && i !== current) s.classList.remove('active', 'prev');
+  });
+  current = next;
+  updateUI();
+}
+function nextSlide() { goTo(current + 1); }
+function prevSlide() { goTo(current - 1); }
+
+// ── UI updates ─────────────────────────────────────────────────────────
+function updateUI() {
+  document.getElementById('slideNum').textContent = current + 1;
+  document.getElementById('slideTotal').textContent = TOTAL;
+  document.getElementById('notesText').textContent = NOTES_TEXT[current] || '';
+  const dots = document.querySelectorAll('.nav-dot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === current));
+}
+
+function toggleLaser(force) {
+  laserOn = (force !== undefined) ? force : !laserOn;
+  document.getElementById('laser').classList.toggle('on', laserOn);
+  document.getElementById('laserBadge').classList.toggle('active', laserOn);
+  document.getElementById('hudLaser').textContent = laserOn ? 'on' : 'off';
+}
+function toggleNotes(force) {
+  notesOn = (force !== undefined) ? force : !notesOn;
+  document.getElementById('notes').classList.toggle('on', notesOn);
+  document.getElementById('notesBadge').classList.toggle('active', notesOn);
+}
+function toggleBlackout() {
+  blackout = !blackout;
+  document.getElementById('blackout').classList.toggle('on', blackout);
+}
+
+function setPressure(v) {
+  pressure = Math.max(0, Math.min(1, v));
+  const pct = Math.round(pressure * 100);
+  document.getElementById('presFill').style.width = pct + '%';
+  document.getElementById('presVal').textContent = pct + '%';
+  document.getElementById('hudPres').textContent = pct + '%';
+  // Scale laser size with pressure when on
+  const laser = document.getElementById('laser');
+  const size = 14 + pressure * 24;
+  laser.style.width = size + 'px';
+  laser.style.height = size + 'px';
+}
+
+// Build nav dots
+(function buildDots() {
+  const container = document.getElementById('navDots');
+  for (let i = 0; i < TOTAL; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.dataset.idx = i;
+    dot.addEventListener('click', () => goTo(i));
+    container.appendChild(dot);
+  }
+})();
+
+// ── Signal Handlers (the single source of truth for each signal) ──────
+function handleGesture(data) {
+  const type = data.type || 'unknown';
+  document.getElementById('hudGesture').textContent = type;
+  if (blackout && type !== 'double_twist') { toggleBlackout(); return; }
+  if (type === 'tap')           nextSlide();
+  if (type === 'double_tap')    prevSlide();
+  if (type === 'twist')         toggleLaser();
+  if (type === 'double_twist')  toggleBlackout();
+}
+
+function handleDirection(data) {
+  const dir = data.direction || '—';
+  document.getElementById('hudDir').textContent = dir;
+  if (blackout) { toggleBlackout(); return; }
+  if (dir === 'Right')       nextSlide();
+  if (dir === 'Left')        prevSlide();
+  if (dir === 'Up')          goTo(0);
+  if (dir === 'Down')        goTo(TOTAL - 1);
+  if (dir === 'Roll Left')   toggleNotes();
+  if (dir === 'Roll Right')  toggleLaser();
+}
+
+function handlePressure(data) {
+  setPressure(data.normalized ?? (data.value / 100));
+}
+
+// ── Mudra Connection ───────────────────────────────────────────────────
+const ws = new MudraWebSocket('ws://127.0.0.1:8766');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'gesture' }));
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'nav_direction' }));
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'pressure' }));
+};
+
+ws.onmessage = (e) => {
+  let msg; try { msg = JSON.parse(e.data); } catch { return; }
+  if (msg.type === 'connection_status') {
+    const ok = msg.data?.status === 'connected';
+    document.getElementById('connDot').className = 'conn-dot' + (ok ? ' live' : '');
+    document.getElementById('connLabel').textContent = ok ? 'Band Connected' : 'Simulated';
+    return;
+  }
+  const d = msg.data || {};
+  if (msg.type === 'gesture')       handleGesture(d);
+  if (msg.type === 'nav_direction') handleDirection(d);
+  if (msg.type === 'pressure')      handlePressure(d);
+};
+
+ws.onclose = () => {
+  document.getElementById('connDot').className = 'conn-dot';
+  document.getElementById('connLabel').textContent = 'Simulated';
+};
+ws.onerror = ws.onclose;
+
+// ── Simulator Panel wiring ─────────────────────────────────────────────
+// Gesture buttons → real trigger_gesture (round-trips through band or mock)
+document.querySelectorAll('.sim-btn[data-g]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ws.send(JSON.stringify({ command: 'trigger_gesture', data: { type: btn.dataset.g } }));
+  });
+});
+// Direction buttons → dispatch locally through the same handler
+document.querySelectorAll('.sim-btn[data-d]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    handleDirection({ direction: btn.dataset.d, timestamp: Date.now() });
+  });
+});
+// Pressure slider → dispatch through handler
+const simPres = document.getElementById('simPressure');
+const simPresVal = document.getElementById('simPressureVal');
+simPres.addEventListener('input', () => {
+  const v = parseInt(simPres.value, 10);
+  simPresVal.textContent = v + '%';
+  handlePressure({ value: v, normalized: v / 100, timestamp: Date.now() });
+});
+
+// ── Toolbar buttons ────────────────────────────────────────────────────
+document.getElementById('prevBtn').addEventListener('click', prevSlide);
+document.getElementById('nextBtn').addEventListener('click', nextSlide);
+
+// ── Keyboard Fallback ──────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'ArrowRight' || e.code === 'Space') { e.preventDefault(); nextSlide(); }
+  if (e.code === 'ArrowLeft')                        { e.preventDefault(); prevSlide(); }
+  if (e.code === 'Home')                             { e.preventDefault(); goTo(0); }
+  if (e.code === 'End')                              { e.preventDefault(); goTo(TOTAL - 1); }
+  if (e.code === 'KeyL')                             { toggleLaser(); }
+  if (e.code === 'KeyN')                             { toggleNotes(); }
+  if (e.code === 'KeyB')                             { toggleBlackout(); }
+});
+
+// ── Init ───────────────────────────────────────────────────────────────
+updateUI();
+setPressure(0);
+</script>
+</body>
+</html>
