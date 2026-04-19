@@ -141,24 +141,17 @@ Open it in your browser to test with the simulator panel.
 
 ## Quick Start — Gemini Gem
 
-### Setup
-
-1. Open [Gemini](https://gemini.google.com/) in your browser
-2. Go to **Gem Manager** (or click **+ New Gem**)
-3. Create a new Gem named **"Mudra Studio"**
-4. Copy the entire contents of [`gemini-gem/gemini.promt.md`](gemini-gem/gemini.promt.md) into the Gem's system prompt
-5. Save the Gem
-
 ### Usage
 
-Open your **Mudra Studio** Gem and describe the app you want:
+1. Open the **[Mudra Studio Gem](https://gemini.google.com/gem/29d975c9c7c0)** in Gemini
+2. Describe the app you want:
 
 ```
 Build a fitness timer app controlled by gestures — tap to start/stop,
 twist to switch exercises, and pressure to adjust difficulty
 ```
 
-Gemini will generate a complete HTML file. Copy the code into a `.html` file and open it in your browser.
+3. Gemini will generate a complete HTML file. Copy the code into a `.html` file and open it in your browser.
 
 ### Example Session
 
