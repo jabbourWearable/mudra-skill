@@ -223,7 +223,8 @@ Build a fitness timer app controlled by gestures — tap to start/stop,
 twist to switch exercises, and pressure to adjust difficulty
 ```
 
-3. Gemini generates a complete HTML file. Copy the code into a `.html` file and open it in your browser.
+3. Gemini will generate a complete HTML file. Just click on preview in the canvas.
+
 
 ### Example Session
 
