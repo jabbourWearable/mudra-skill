@@ -24,8 +24,8 @@ This repository contains two AI skills that turn natural language descriptions i
 |---|---|---|
 | **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps |
 | **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps |
-| **Mudra Studio 2D Gem** | [Gemini](https://gemini.google.com/) | Gemini Gem — 2D web apps |
-| **Mudra Studio 3D Gem** | [Gemini](https://gemini.google.com/) | Gemini Gem — 3D/XR/VR/AR apps |
+| **Mudra Studio 2D Gem** | [Gemini](https://gemini.google.com/gem/29d975c9c7c0) | Gemini Gem — 2D web apps |
+| **Mudra Studio 3D Gem** | [Gemini](https://gemini.google.com/gem/70714fabfb28) | Gemini Gem — 3D/XR/VR/AR apps |
 
 ---
 
