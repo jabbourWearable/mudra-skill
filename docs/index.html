@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,11 @@
       --code-bg: #1a202c;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -35,132 +40,320 @@
       padding: 80px 24px 60px;
       text-align: center;
     }
-    .hero h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 12px; }
-    .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto 28px; }
-    .hero-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-    .hero-buttons a {
-      padding: 12px 28px; border-radius: 8px; text-decoration: none;
-      font-weight: 600; font-size: 0.95rem; transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .hero-buttons a:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
-    .btn-white { background: #fff; color: var(--primary); }
-    .btn-outline { border: 2px solid #fff; color: #fff; background: transparent; }
 
-    /* Container */
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-
-    /* Section */
-    section { padding: 64px 0; }
-    section h2 {
-      font-size: 1.8rem; font-weight: 700; text-align: center;
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
       margin-bottom: 12px;
     }
+
+    .hero p {
+      font-size: 1.15rem;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto 28px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-buttons a {
+      padding: 12px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .hero-buttons a:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-white {
+      background: #fff;
+      color: var(--primary);
+    }
+
+    .btn-outline {
+      border: 2px solid #fff;
+      color: #fff;
+      background: transparent;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Section */
+    section {
+      padding: 64px 0;
+    }
+
+    section h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
     section .subtitle {
-      text-align: center; color: var(--text-light); margin-bottom: 40px;
+      text-align: center;
+      color: var(--text-light);
+      margin-bottom: 40px;
       font-size: 1rem;
     }
 
     /* Skills comparison */
-    .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .skills-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
     .skill-card {
-      background: var(--card-bg); border-radius: 12px; padding: 32px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 32px;
       border: 1px solid var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       transition: box-shadow 0.2s;
     }
-    .skill-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-    .skill-card h3 { font-size: 1.3rem; margin-bottom: 8px; }
-    .skill-card .platform { color: var(--text-light); font-size: 0.85rem; margin-bottom: 16px; }
-    .skill-card ol { padding-left: 20px; color: var(--text-light); font-size: 0.9rem; }
-    .skill-card ol li { margin-bottom: 6px; }
-    .skill-card code {
-      background: var(--code-bg); color: #e2e8f0; padding: 2px 8px;
-      border-radius: 4px; font-size: 0.82rem;
+
+    .skill-card:hover {
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
     }
+
+    .skill-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+    }
+
+    .skill-card .platform {
+      color: var(--text-light);
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+
+    .skill-card ol {
+      padding-left: 20px;
+      color: var(--text-light);
+      font-size: 0.9rem;
+    }
+
+    .skill-card ol li {
+      margin-bottom: 6px;
+    }
+
+    .skill-card code {
+      background: var(--code-bg);
+      color: #e2e8f0;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+    }
+
     .skill-card .try-btn {
-      display: inline-block; margin-top: 18px; padding: 10px 22px;
+      display: inline-block;
+      margin-top: 18px;
+      padding: 10px 22px;
       background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #fff; border-radius: 8px; text-decoration: none;
-      font-weight: 600; font-size: 0.9rem;
+      color: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
       transition: opacity 0.15s;
     }
-    .skill-card .try-btn:hover { opacity: 0.9; }
+
+    .skill-card .try-btn:hover {
+      opacity: 0.9;
+    }
 
     /* Signals */
-    .signals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-    .signal-chip {
-      background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: 16px 20px;
-      display: flex; align-items: center; gap: 14px;
+    .signals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
     }
+
+    .signal-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
     .signal-icon {
-      width: 42px; height: 42px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
       background: linear-gradient(135deg, var(--primary), var(--accent));
       color: #fff;
     }
-    .signal-chip .signal-name { font-weight: 600; font-size: 0.95rem; }
-    .signal-chip .signal-desc { font-size: 0.8rem; color: var(--text-light); }
+
+    .signal-chip .signal-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .signal-chip .signal-desc {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
 
     /* Demo gallery */
     .demo-filters {
-      display: flex; gap: 8px; justify-content: center; margin-bottom: 28px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 28px;
       flex-wrap: wrap;
     }
+
     .demo-filters button {
-      padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border);
-      background: var(--card-bg); color: var(--text-light); cursor: pointer;
-      font-family: inherit; font-size: 0.85rem; transition: all 0.15s;
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-light);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: all 0.15s;
     }
+
     .demo-filters button.active,
     .demo-filters button:hover {
-      background: var(--primary); color: #fff; border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
     }
+
     .demo-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 20px;
     }
+
     .demo-card {
-      background: var(--card-bg); border-radius: 12px; overflow: hidden;
-      border: 1px solid var(--border); transition: box-shadow 0.2s, transform 0.2s;
-      text-decoration: none; color: inherit; display: block;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s, transform 0.2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
     }
-    .demo-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); transform: translateY(-3px); }
+
+    .demo-card:hover {
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+
     .demo-card .demo-preview {
-      height: 160px; background: linear-gradient(135deg, #edf2f7, #e2e8f0);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2.5rem; position: relative;
+      height: 160px;
+      background: linear-gradient(135deg, #edf2f7, #e2e8f0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      position: relative;
     }
+
     .demo-card .demo-preview .mode-badge {
-      position: absolute; top: 10px; right: 10px;
-      background: rgba(0,0,0,0.5); color: #fff; padding: 3px 10px;
-      border-radius: 12px; font-size: 0.7rem; font-weight: 500;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 500;
     }
-    .demo-card .demo-info { padding: 16px; }
-    .demo-card .demo-info h4 { font-size: 1rem; margin-bottom: 4px; }
-    .demo-card .demo-info p { font-size: 0.82rem; color: var(--text-light); margin-bottom: 8px; }
-    .demo-card .demo-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .demo-card .demo-info {
+      padding: 16px;
+    }
+
+    .demo-card .demo-info h4 {
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .demo-card .demo-info p {
+      font-size: 0.82rem;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+
+    .demo-card .demo-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     .demo-card .demo-tag {
-      background: #edf2f7; padding: 2px 10px; border-radius: 12px;
-      font-size: 0.72rem; color: var(--text-light); font-weight: 500;
+      background: #edf2f7;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      color: var(--text-light);
+      font-weight: 500;
     }
 
     /* Footer */
     footer {
-      background: var(--code-bg); color: #a0aec0; padding: 40px 24px;
-      text-align: center; font-size: 0.9rem;
+      background: var(--code-bg);
+      color: #a0aec0;
+      padding: 40px 24px;
+      text-align: center;
+      font-size: 0.9rem;
     }
-    footer a { color: var(--primary); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
 
     @media (max-width: 768px) {
-      .hero h1 { font-size: 2rem; }
-      .skills-grid { grid-template-columns: 1fr; }
-      .demo-grid { grid-template-columns: 1fr; }
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .skills-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <!-- Hero -->
@@ -188,14 +381,16 @@
             <li>Open Claude Code and run:<br><code>/mudra-preview your app idea</code></li>
             <li>Open the generated HTML in your browser</li>
           </ol>
-          <a href="https://github.com/jabbourWearable/mudra-skill#quick-start--claude-code-skill" class="try-btn">Setup Guide</a>
+          <a href="https://github.com/jabbourWearable/mudra-skill#quick-start--claude-code-skill" class="try-btn">Setup
+            Guide</a>
         </div>
 
         <div class="skill-card">
           <h3>Gemini Gem</h3>
           <p class="platform">For Google Gemini</p>
           <ol>
-            <li>Open the <a href="https://gemini.google.com/gem/29d975c9c7c0" style="color:var(--primary)">Mudra Studio Gem</a> in Gemini</li>
+            <li>Open the <a href="https://gemini.google.com/gem/29d975c9c7c0" style="color:var(--primary)">Mudra Studio
+                Gem</a> in Gemini</li>
             <li>Describe the app you want to build</li>
             <li>Copy the generated HTML into a file and open in browser</li>
           </ol>
@@ -214,39 +409,66 @@
       <div class="signals-grid">
         <div class="signal-chip">
           <div class="signal-icon">&#9758;</div>
-          <div><div class="signal-name">gesture</div><div class="signal-desc">Tap, Double Tap, Twist, Double Twist</div></div>
+          <div>
+            <div class="signal-name">gesture</div>
+            <div class="signal-desc">Tap, Double Tap, Twist, Double Twist</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#9673;</div>
-          <div><div class="signal-name">button</div><div class="signal-desc">Air touch press / release</div></div>
+          <div>
+            <div class="signal-name">button</div>
+            <div class="signal-desc">Air touch press / release</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#9646;</div>
-          <div><div class="signal-name">pressure</div><div class="signal-desc">Analog finger pressure 0-100%</div></div>
+          <div>
+            <div class="signal-name">pressure</div>
+            <div class="signal-desc">Analog finger pressure 0-100%</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#10138;</div>
-          <div><div class="signal-name">navigation</div><div class="signal-desc">Continuous X/Y pointer deltas</div></div>
+          <div>
+            <div class="signal-name">navigation</div>
+            <div class="signal-desc">Continuous X/Y pointer deltas</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#8982;</div>
-          <div><div class="signal-name">nav_direction</div><div class="signal-desc">Discrete: Up, Down, Left, Right, Roll</div></div>
+          <div>
+            <div class="signal-name">nav_direction</div>
+            <div class="signal-desc">Discrete: Up, Down, Left, Right, Roll</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#8634;</div>
-          <div><div class="signal-name">imu_acc</div><div class="signal-desc">Accelerometer — 3-axis (m/s&sup2;)</div></div>
+          <div>
+            <div class="signal-name">imu_acc</div>
+            <div class="signal-desc">Accelerometer — 3-axis (m/s&sup2;)</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#8635;</div>
-          <div><div class="signal-name">imu_gyro</div><div class="signal-desc">Gyroscope — 3-axis (deg/s)</div></div>
+          <div>
+            <div class="signal-name">imu_gyro</div>
+            <div class="signal-desc">Gyroscope — 3-axis (deg/s)</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#8767;</div>
-          <div><div class="signal-name">snc</div><div class="signal-desc">Surface nerve conductance — 3 channels</div></div>
+          <div>
+            <div class="signal-name">snc</div>
+            <div class="signal-desc">Surface nerve conductance — 3 channels</div>
+          </div>
         </div>
         <div class="signal-chip">
           <div class="signal-icon">&#9889;</div>
-          <div><div class="signal-name">battery</div><div class="signal-desc">Battery level + charging status</div></div>
+          <div>
+            <div class="signal-name">battery</div>
+            <div class="signal-desc">Battery level + charging status</div>
+          </div>
         </div>
       </div>
     </div>
@@ -256,7 +478,8 @@
   <section id="demos">
     <div class="container">
       <h2>Live Demo Gallery</h2>
-      <p class="subtitle">Click any demo to try it in your browser — no Mudra Band required. Use the built-in simulator buttons.</p>
+      <p class="subtitle">Click any demo to try it in your browser — no Mudra Band required. Use the built-in simulator
+        buttons.</p>
 
       <div class="demo-filters">
         <button class="active" onclick="filterDemos('all', this)">All</button>
@@ -265,104 +488,126 @@
         <button onclick="filterDemos('pointer', this)">Pointer Mode</button>
         <button onclick="filterDemos('pressure', this)">Pressure &amp; SNC</button>
         <button onclick="filterDemos('multi', this)">Multi-Signal</button>
+        <button onclick="filterDemos('xr', this)">3D / XR</button>
       </div>
 
       <div class="demo-grid" id="demoGrid">
 
         <!-- Direction Mode -->
-        <a href="demos/space-invaders.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #4ade80;">&#128126;</div>
+        <a href="demos/2D/space-invaders.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #4ade80;">
+            &#128126;</div>
           <div class="demo-info">
             <h4>Space Invaders</h4>
             <p>Classic arcade shooter with directional movement and tap to fire</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/neural-pong.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0d1117, #1a1a2e); color: #60a5fa;">&#127955;</div>
+        <a href="demos/2D/neural-pong.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #0d1117, #1a1a2e); color: #60a5fa;">
+            &#127955;</div>
           <div class="demo-info">
             <h4>Neural Pong</h4>
             <p>Pong game controlled by wrist directional gestures</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/neural-snake.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7;">&#128013;</div>
+        <a href="demos/2D/neural-snake.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7;">
+            &#128013;</div>
           <div class="demo-info">
             <h4>Neural Snake</h4>
             <p>Classic snake game with directional wrist control</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/music-sequencer.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #4c1d95, #6d28d9); color: #c4b5fd;">&#127925;</div>
+        <a href="demos/2D/music-sequencer.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #4c1d95, #6d28d9); color: #c4b5fd;">
+            &#127925;</div>
           <div class="demo-info">
             <h4>Music Sequencer</h4>
             <p>8-step beat sequencer — navigate grid and tap to toggle beats</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
+                class="demo-tag">pressure</span></div>
           </div>
         </a>
 
-        <a href="demos/presentation-controller.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1e3a5f, #2563eb); color: #bfdbfe;">&#128218;</div>
+        <a href="demos/2D/presentation-controller.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1e3a5f, #2563eb); color: #bfdbfe;">
+            &#128218;</div>
           <div class="demo-info">
             <h4>Presentation Controller</h4>
             <p>Slide deck remote — swipe to navigate, tap for laser pointer</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/smart-home.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #16a34a;">&#127968;</div>
+        <a href="demos/2D/smart-home.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #16a34a;">
+            &#127968;</div>
           <div class="demo-info">
             <h4>Smart Home</h4>
             <p>Navigate rooms and toggle devices hands-free</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
+                class="demo-tag">pressure</span></div>
           </div>
         </a>
 
-        <a href="demos/ar-menu.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0c4a6e, #0284c7); color: #7dd3fc;">&#128083;</div>
+        <a href="demos/2Dar-menu.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #0c4a6e, #0284c7); color: #7dd3fc;">
+            &#128083;</div>
           <div class="demo-info">
             <h4>AR Menu</h4>
             <p>Augmented reality-style interface with directional navigation</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/document-scroller.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fefce8, #fef9c3); color: #a16207;">&#128196;</div>
+        <a href="demos/2D/document-scroller.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #fefce8, #fef9c3); color: #a16207;">
+            &#128196;</div>
           <div class="demo-info">
             <h4>Document Scroller</h4>
             <p>Gesture-based document reader with swipe navigation</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
+                class="demo-tag">pressure</span></div>
           </div>
         </a>
 
-        <a href="demos/gesture-speech.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fdf4ff, #f5d0fe); color: #a21caf;">&#128172;</div>
+        <a href="demos/2D/gesture-speech.html" class="demo-card" data-mode="direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #fdf4ff, #f5d0fe); color: #a21caf;">
+            &#128172;</div>
           <div class="demo-info">
             <h4>Gesture Speech</h4>
             <p>Speech assistance — trigger phrases with gestures</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
         <!-- IMU Mode -->
-        <a href="demos/generative-art.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444); color: #fff;">&#127912;</div>
+        <a href="demos/2D/generative-art.html" class="demo-card" data-mode="imu">
+          <div class="demo-preview"
+            style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444); color: #fff;">&#127912;</div>
           <div class="demo-info">
             <h4>Generative Art</h4>
             <p>Tilt your wrist to create flowing generative art</p>
-            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span
+                class="demo-tag">gesture</span></div>
           </div>
         </a>
 
-        <a href="demos/model-rotator.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1e293b, #334155); color: #94a3b8;">&#128190;</div>
+        <a href="demos/2D/model-rotator.html" class="demo-card" data-mode="imu">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1e293b, #334155); color: #94a3b8;">
+            &#128190;</div>
           <div class="demo-info">
             <h4>3D Model Rotator</h4>
             <p>Rotate 3D objects by tilting your wrist</p>
@@ -370,28 +615,33 @@
           </div>
         </a>
 
-        <a href="demos/mudra-duel.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #7f1d1d, #b91c1c); color: #fca5a5;">&#9876;</div>
+        <a href="demos/2D/mudra-duel.html" class="demo-card" data-mode="imu">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #7f1d1d, #b91c1c); color: #fca5a5;">
+            &#9876;</div>
           <div class="demo-info">
             <h4>Mudra Duel</h4>
             <p>1v1 gesture battle game with tilt and motion</p>
-            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span
+                class="demo-tag">gesture</span></div>
           </div>
         </a>
 
         <!-- Pointer Mode -->
-        <a href="demos/hands-free-desktop.html" class="demo-card" data-mode="pointer">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb;">&#128421;</div>
+        <a href="demos/2D/hands-free-desktop.html" class="demo-card" data-mode="pointer">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb;">
+            &#128421;</div>
           <div class="demo-info">
             <h4>Hands-Free Desktop</h4>
             <p>Control a virtual desktop with pointer navigation and air click</p>
-            <div class="demo-tags"><span class="demo-tag">navigation</span><span class="demo-tag">button</span><span class="demo-tag">gesture</span></div>
+            <div class="demo-tags"><span class="demo-tag">navigation</span><span class="demo-tag">button</span><span
+                class="demo-tag">gesture</span></div>
           </div>
         </a>
 
         <!-- Pressure & SNC -->
-        <a href="demos/pressure-painter.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #ea580c;">&#127912;</div>
+        <a href="demos/2D/pressure-painter.html" class="demo-card" data-mode="pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #ea580c;">
+            &#127912;</div>
           <div class="demo-info">
             <h4>Pressure Painter</h4>
             <p>Pressure-sensitive painting canvas with gesture color switching</p>
@@ -399,8 +649,9 @@
           </div>
         </a>
 
-        <a href="demos/emg-visualizer.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #022c22, #064e3b); color: #34d399;">&#128200;</div>
+        <a href="demos/2D/emg-visualizer.html" class="demo-card" data-mode="pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #022c22, #064e3b); color: #34d399;">
+            &#128200;</div>
           <div class="demo-info">
             <h4>EMG Visualizer</h4>
             <p>Real-time SNC/EMG biofeedback — 3 channel waveform display</p>
@@ -408,8 +659,9 @@
           </div>
         </a>
 
-        <a href="demos/gesture-assistant.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); color: #7c3aed;">&#129302;</div>
+        <a href="demos/2D/gesture-assistant.html" class="demo-card" data-mode="pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); color: #7c3aed;">
+            &#129302;</div>
           <div class="demo-info">
             <h4>Gesture Assistant</h4>
             <p>Gesture recognition helper with visual feedback</p>
@@ -418,8 +670,9 @@
         </a>
 
         <!-- Multi-Signal -->
-        <a href="demos/drum-machine.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #451a03, #78350f); color: #fbbf24;">&#129345;</div>
+        <a href="demos/2D/drum-machine.html" class="demo-card" data-mode="multi">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #451a03, #78350f); color: #fbbf24;">
+            &#129345;</div>
           <div class="demo-info">
             <h4>Drum Machine</h4>
             <p>Trigger drum hits with gestures, control volume with pressure</p>
@@ -427,26 +680,31 @@
           </div>
         </a>
 
-        <a href="demos/runner.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #ecfdf5, #a7f3d0); color: #059669;">&#127939;</div>
+        <a href="demos/2D/runner.html" class="demo-card" data-mode="multi">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #ecfdf5, #a7f3d0); color: #059669;">
+            &#127939;</div>
           <div class="demo-info">
             <h4>Runner</h4>
             <p>Side-scrolling runner — gesture to jump, pressure to sprint</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span class="demo-tag">nav_direction</span></div>
+            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
+                class="demo-tag">nav_direction</span></div>
           </div>
         </a>
 
-        <a href="demos/waterful-ring-toss.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1;">&#128171;</div>
+        <a href="demos/2D/waterful-ring-toss.html" class="demo-card" data-mode="multi">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1;">
+            &#128171;</div>
           <div class="demo-info">
             <h4>Waterful Ring Toss</h4>
             <p>Classic water ring toss arcade game</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span class="demo-tag">nav_direction</span></div>
+            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
+                class="demo-tag">nav_direction</span></div>
           </div>
         </a>
 
-        <a href="demos/mudra-monitor.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #38bdf8;">&#128225;</div>
+        <a href="demos/2Dmudra-monitor.html" class="demo-card" data-mode="multi">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #38bdf8;">
+            &#128225;</div>
           <div class="demo-info">
             <h4>Mudra Monitor</h4>
             <p>Full device telemetry dashboard — all 9 signal types</p>
@@ -454,12 +712,25 @@
           </div>
         </a>
 
-        <a href="demos/mudra-ultimate-template.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">&#128736;</div>
+        <a href="demos/2D/mudra-ultimate-template.html" class="demo-card" data-mode="multi">
+          <div class="demo-preview"
+            style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">&#128736;</div>
           <div class="demo-info">
             <h4>Starter Template</h4>
             <p>Baseline template with all signal handlers — fork this for custom apps</p>
             <div class="demo-tags"><span class="demo-tag">template</span><span class="demo-tag">all signals</span></div>
+          </div>
+        </a>
+
+        <!-- 3D / XR Apps -->
+        <a href="demos/3D/xr-pinch-cube.html" class="demo-card" data-mode="xr">
+          <div class="demo-preview"
+            style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); color: #44aaff;">&#127908;</div>
+          <div class="demo-info">
+            <h4>XR Pinch Cube</h4>
+            <p>3D cube floats in WebXR — pinch to rotate, pressure to scale and recolor</p>
+            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
+                class="demo-tag">XR</span></div>
           </div>
         </a>
 
@@ -476,10 +747,22 @@
         <div>
           <h4 style="margin-bottom: 12px; font-size: 1rem;">Keyboard Controls</h4>
           <table style="width: 100%; font-size: 0.9rem; border-collapse: collapse;">
-            <tr><td style="padding: 6px 0; color: var(--text-light);">Space</td><td style="padding: 6px 0;">Trigger gesture (tap)</td></tr>
-            <tr><td style="padding: 6px 0; color: var(--text-light);">Shift</td><td style="padding: 6px 0;">Button hold</td></tr>
-            <tr><td style="padding: 6px 0; color: var(--text-light);">[ / ]</td><td style="padding: 6px 0;">Pressure down / up</td></tr>
-            <tr><td style="padding: 6px 0; color: var(--text-light);">Arrows</td><td style="padding: 6px 0;">Direction / Nav / Tilt</td></tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-light);">Space</td>
+              <td style="padding: 6px 0;">Trigger gesture (tap)</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-light);">Shift</td>
+              <td style="padding: 6px 0;">Button hold</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-light);">[ / ]</td>
+              <td style="padding: 6px 0;">Pressure down / up</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: var(--text-light);">Arrows</td>
+              <td style="padding: 6px 0;">Direction / Nav / Tilt</td>
+            </tr>
           </table>
         </div>
         <div>
@@ -518,4 +801,5 @@
   </script>
 
 </body>
+
 </html>

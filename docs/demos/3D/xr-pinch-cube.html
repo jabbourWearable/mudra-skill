@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Pinch Cube | Mudra XR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/addons/"
+        }
+      }
+    </script>
+    <style>
+      #mudra-status {
+        position: fixed; top: 8px; right: 12px;
+        padding: 4px 10px; border-radius: 999px;
+        font-size: 0.8rem; font-family: system-ui, sans-serif;
+        background: rgba(0,0,0,0.6); color: #fff;
+        z-index: 9999;
+      }
+      #mudra-sim {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+        padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px;
+        align-items: center; z-index: 9999;
+        font-family: system-ui, sans-serif; font-size: 0.8rem;
+      }
+      #mudra-sim .sig-group {
+        display: flex; align-items: center; gap: 4px;
+      }
+      #mudra-sim .sig-label {
+        color: #aaa; margin-right: 4px; white-space: nowrap;
+      }
+      #mudra-sim button {
+        background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+        color: #fff; border-radius: 6px; padding: 4px 10px;
+        cursor: pointer; font-size: 0.8rem;
+      }
+      #mudra-sim button:hover { background: rgba(255,255,255,0.3); }
+      #mudra-sim input[type=range] { width: 100px; }
+      #pressure-val { color: #ccc; min-width: 28px; }
+    </style>
+  </head>
+  <body>
+    <div id="mudra-status">Connecting…</div>
+
+    <div id="mudra-sim">
+      <div class="sig-group">
+        <span class="sig-label">gesture:</span>
+        <button onclick="simGesture('tap')">Tap</button>
+        <button onclick="simGesture('double_tap')">2Tap</button>
+        <button onclick="simGesture('twist')">Twist</button>
+        <button onclick="simGesture('double_twist')">2Twist</button>
+      </div>
+      <div class="sig-group">
+        <span class="sig-label">pressure:</span>
+        <input type="range" id="pressure-slider" min="0" max="100" value="0"
+               oninput="simPressure(this.value)">
+        <span id="pressure-val">0</span>
+      </div>
+    </div>
+
+    <script type="module">
+import * as THREE from 'three';
+import * as xb from 'xrblocks';
+
+// ── MudraClient ──────────────────────────────────────────────────────────────
+class MudraClient {
+  constructor(url) {
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._timers = [];
+    this._status = 'connecting';
+    this._notifyStatus('connecting');
+
+    const timeout = setTimeout(() => this._startMock(), 1500);
+
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen = () => {
+        clearTimeout(timeout);
+        this._status = 'connected';
+        this._notifyStatus('connected');
+        this._subscriptions.forEach(sig =>
+          this._ws.send(JSON.stringify({ command: 'subscribe', signal: sig }))
+        );
+      };
+      this._ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (this._handlers[msg.type]) this._handlers[msg.type](msg.data);
+      };
+      this._ws.onclose = () => {
+        clearTimeout(timeout);
+        if (this._status === 'connected') {
+          this._status = 'disconnected-simulated';
+          this._notifyStatus('disconnected-simulated');
+          this._startMock();
+        }
+      };
+      this._ws.onerror = () => {
+        clearTimeout(timeout);
+        this._startMock();
+      };
+    } catch (_) {
+      clearTimeout(timeout);
+      this._startMock();
+    }
+  }
+
+  on(signal, fn) { this._handlers[signal] = fn; }
+
+  subscribe(signal) {
+    this._subscriptions.add(signal);
+    if (this._ws && this._ws.readyState === WebSocket.OPEN)
+      this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+  }
+
+  send(cmd) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN)
+      this._ws.send(JSON.stringify(cmd));
+    else if (cmd.command === 'trigger_gesture')
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 0.99, timestamp: Date.now() } });
+  }
+
+  get status() { return this._status; }
+
+  _notifyStatus(s) {
+    if (this._handlers['_status']) this._handlers['_status'](s);
+  }
+
+  _emit(payload) {
+    if (this._handlers[payload.type]) this._handlers[payload.type](payload.data);
+  }
+
+  _startMock() {
+    if (this._status === 'simulated' || this._status === 'disconnected-simulated') return;
+    const wasPreviouslyConnected = this._status === 'connected';
+    this._status = wasPreviouslyConnected ? 'disconnected-simulated' : 'simulated';
+    this._notifyStatus(this._status);
+
+    let t = 0;
+    this._timers.push(setInterval(() => {
+      if (!this._subscriptions.has('pressure')) return;
+      t += 0.05;
+      const norm = (Math.sin(t) + 1) / 2;
+      this._emit({ type: 'pressure', data: { value: Math.round(norm * 100), normalized: norm, timestamp: Date.now() } });
+    }, 50));
+  }
+
+  destroy() {
+    this._timers.forEach(t => clearInterval(t));
+    if (this._ws) this._ws.close();
+  }
+}
+
+// ── Module-scope MudraClient ──────────────────────────────────────────────────
+const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+// ── XR Blocks scene ──────────────────────────────────────────────────────────
+class MainScript extends xb.Script {
+  init() {
+    this.add(new THREE.HemisphereLight(0xffffff, 0x444444, 3));
+    this.add(new THREE.DirectionalLight(0xffffff, 1.5));
+
+    const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+    this.mat = new THREE.MeshPhongMaterial({ color: 0x44aaff });
+    this.cube = new THREE.Mesh(geometry, this.mat);
+    this.cube.position.set(0, xb.user.height - 0.4, -xb.user.objectDistance);
+    this.add(this.cube);
+
+    this._pressure = 0;
+    this._rotating = false;
+
+    // Status chip
+    mudra.on('_status', (s) => {
+      const labels = {
+        'connecting': 'Connecting…',
+        'connected': 'Connected',
+        'simulated': 'Simulated',
+        'disconnected-simulated': 'Disconnected — simulated',
+      };
+      document.getElementById('mudra-status').textContent = labels[s] ?? s;
+    });
+
+    // Gesture → pinch = start/stop auto-rotation
+    mudra.on('gesture', (data) => {
+      if (data.type === 'tap' || data.type === 'double_tap') {
+        this._rotating = !this._rotating;
+      }
+    });
+    mudra.subscribe('gesture');
+
+    // Pressure → scale + color
+    mudra.on('pressure', (data) => {
+      this._pressure = data.normalized;
+      const s = 0.5 + data.normalized * 1.5;
+      this.cube.scale.setScalar(s);
+      this.mat.color.setHSL(data.normalized * 0.8, 0.9, 0.5);
+      // sync slider
+      const slider = document.getElementById('pressure-slider');
+      const val = document.getElementById('pressure-val');
+      if (slider) slider.value = data.value;
+      if (val) val.textContent = data.value;
+    });
+    mudra.subscribe('pressure');
+  }
+
+  update() {
+    if (this._rotating) {
+      this.cube.rotation.y += 0.02;
+      this.cube.rotation.x += 0.01;
+    }
+  }
+
+  // XR pinch events also control rotation
+  onSelectStart(event) {
+    this._rotating = true;
+  }
+
+  onSelectEnd(event) {
+    this._rotating = false;
+  }
+}
+
+// ── Simulator helpers ─────────────────────────────────────────────────────────
+window.simGesture = function(type) {
+  mudra.send({ command: 'trigger_gesture', data: { type } });
+  mudra._emit({ type: 'gesture', data: { type, confidence: 1.0, timestamp: Date.now() } });
+};
+
+window.simPressure = function(val) {
+  const norm = val / 100;
+  document.getElementById('pressure-val').textContent = val;
+  mudra._emit({ type: 'pressure', data: { value: +val, normalized: norm, timestamp: Date.now() } });
+};
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+window.addEventListener('keydown', (e) => {
+  switch (e.code) {
+    case 'Space':
+      e.stopPropagation();
+      window.simGesture('tap');
+      break;
+    case 'BracketLeft': {
+      e.stopPropagation();
+      const slider = document.getElementById('pressure-slider');
+      const newVal = Math.max(0, +slider.value - 10);
+      slider.value = newVal;
+      window.simPressure(newVal);
+      break;
+    }
+    case 'BracketRight': {
+      e.stopPropagation();
+      const slider = document.getElementById('pressure-slider');
+      const newVal = Math.min(100, +slider.value + 10);
+      slider.value = newVal;
+      window.simPressure(newVal);
+      break;
+    }
+  }
+}, { capture: true });
+
+// ── Entry ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+  xb.add(new MainScript());
+  xb.init(new xb.Options());
+});
+    </script>
+  </body>
+</html>

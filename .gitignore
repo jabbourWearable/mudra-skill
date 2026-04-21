@@ -1,1 +1,15 @@
 preview/
+xrpromt.md
+
+.vscode/
+
+claude.md
+
+.agent/
+.specify/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/mudra-xr/
+
+specs/
