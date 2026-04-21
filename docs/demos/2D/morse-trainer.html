@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Morse Code Trainer — Mudra</title>
+  <style>
+    :root {
+      --bg:            #f5f0e8;
+      --card:          #fefcf5;
+      --primary:       #1c1917;
+      --accent:        #b45309;
+      --active:        #d97706;
+      --success:       #15803d;
+      --error:         #b91c1c;
+      --text:          #1c1917;
+      --text-muted:    #78716c;
+      --border:        #d6d3d1;
+      --mono:          'Courier New', Courier, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      display: grid;
+      place-items: start center;
+      padding: 16px 16px 48px;
+    }
+
+    .app {
+      width: min(740px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.05rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #eab308;
+      box-shadow: 0 0 0 3px rgba(234,179,8,.18);
+      transition: background 200ms, box-shadow 200ms;
+      flex-shrink: 0;
+    }
+    .status-dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(21,128,61,.2);
+    }
+
+    /* ── Simulator Panel ────────────────────────────────────────────────── */
+    .sim-panel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .sim-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .sim-divider {
+      width: 1px; height: 20px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    button {
+      font-family: var(--mono);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 11px;
+      font-size: 0.83rem;
+      cursor: pointer;
+      background: var(--card);
+      color: var(--text);
+      font-weight: 600;
+      transition: background 80ms, transform 60ms;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    button:hover   { background: #ede9e3; }
+    button:active  { transform: scale(0.96); }
+
+    button.btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    button.btn-primary:hover { background: #333; }
+
+    button.btn-accent {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    button.btn-accent:hover { background: #92400e; }
+
+    #holdBtn {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      padding: 5px 18px;
+      letter-spacing: 0.05em;
+      transition: background 80ms, box-shadow 80ms, transform 60ms;
+    }
+    #holdBtn.pressing {
+      background: var(--active);
+      border-color: var(--active);
+      box-shadow: 0 0 0 4px rgba(217,119,6,.25);
+    }
+
+    .press-ind {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .press-pip {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 80ms, box-shadow 80ms;
+    }
+    .press-pip.active {
+      background: var(--active);
+      box-shadow: 0 0 0 3px rgba(217,119,6,.22);
+    }
+
+    /* ── Target area ────────────────────────────────────────────────────── */
+    .target-area {
+      text-align: center;
+      padding: 20px 12px 12px;
+    }
+
+    .target-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .target-letter {
+      font-size: 5.5rem;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+    }
+
+    .target-morse-hint {
+      margin-top: 6px;
+      font-size: 1.6rem;
+      letter-spacing: 0.35em;
+      color: var(--accent);
+      min-height: 2rem;
+      transition: opacity 200ms;
+    }
+    .target-morse-hint.hidden { opacity: 0; }
+
+    .hint-toggle {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      text-decoration: underline dotted;
+      cursor: pointer;
+      padding: 2px 4px;
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+    .hint-toggle:hover { color: var(--accent); }
+
+    /* ── Sequence input area ─────────────────────────────────────────────── */
+    .seq-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      min-height: 80px;
+    }
+
+    .seq-symbols {
+      display: flex;
+      gap: 6px;
+      min-height: 2.4rem;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .sym {
+      font-size: 2.2rem;
+      line-height: 1;
+      animation: pop 140ms ease;
+    }
+    .sym-dot  { color: var(--primary); }
+    .sym-dash { color: var(--accent); }
+
+    @keyframes pop {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .seq-empty {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .decoded-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .decoded-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .decoded-letter {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 2ch;
+      text-align: center;
+      transition: color 150ms;
+    }
+
+    /* press-hold animation on target letter */
+    .target-letter.pressing {
+      text-shadow: 0 0 20px rgba(217,119,6,.4);
+      transition: text-shadow 80ms;
+    }
+
+    /* ── Action row ─────────────────────────────────────────────────────── */
+    .action-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 16px 16px;
+    }
+
+    /* ── Score ──────────────────────────────────────────────────────────── */
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .score-num {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .score-bar {
+      flex: 1;
+      height: 7px;
+      border-radius: 99px;
+      background: var(--border);
+      overflow: hidden;
+      min-width: 60px;
+    }
+    .score-fill {
+      height: 100%;
+      background: var(--success);
+      border-radius: 99px;
+      transition: width 350ms ease;
+    }
+    .score-pct {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* ── Morse reference ─────────────────────────────────────────────────── */
+    .ref-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .morse-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 3px;
+    }
+
+    .ref-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 3px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.02);
+      font-size: 0.74rem;
+      transition: background 150ms, border-color 150ms;
+    }
+    .ref-item.target-item {
+      background: rgba(180,83,9,.12);
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .ref-letter { color: var(--primary); }
+    .ref-code   { color: var(--accent); letter-spacing: 0.08em; }
+
+    /* ── HUD & help ─────────────────────────────────────────────────────── */
+    .hud {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .hud-val { color: var(--text); font-weight: 700; }
+
+    .help-text {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ── Result flash ────────────────────────────────────────────────────── */
+    .result-flash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .flash-text {
+      font-size: 6rem;
+      font-weight: 900;
+      font-family: var(--mono);
+      opacity: 0;
+      transform: scale(0.4);
+      transition: opacity 90ms ease, transform 90ms ease;
+    }
+    .flash-text.show {
+      opacity: 0.88;
+      transform: scale(1);
+    }
+    .flash-text.ok  { color: var(--success); }
+    .flash-text.err { color: var(--error); }
+
+    .mudra-badge {
+      position: fixed;
+      bottom: 10px; right: 12px;
+      font-size: 10px;
+      color: var(--text-muted);
+      opacity: 0.55;
+      font-family: var(--mono);
+      pointer-events: none;
+    }
+
+    @media (max-width: 480px) {
+      .target-letter { font-size: 4rem; }
+      .target-morse-hint { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+
+    <!-- ── Header + Sim Panel ──────────────────────────────────────────── -->
+    <section class="card">
+      <div class="header-row">
+        <h1>Morse Code Trainer</h1>
+        <div class="status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Connecting…</span>
+        </div>
+      </div>
+
+      <div class="sim-panel">
+        <span class="sim-label">Sim</span>
+
+        <button id="holdBtn"
+          onmousedown="simPressStart()" onmouseup="simPressEnd()" onmouseleave="simPressEnd()"
+          ontouchstart="simPressStart(event)" ontouchend="simPressEnd(event)" ontouchcancel="simPressEnd(event)">
+          ■ HOLD
+        </button>
+        <button onclick="simQuickDot()">· Dot</button>
+        <button onclick="simQuickDash()">— Dash</button>
+
+        <span class="sim-divider"></span>
+
+        <button onclick="simGesture('tap')">Tap</button>
+        <button onclick="simGesture('double_tap')">2Tap</button>
+
+        <span class="sim-divider"></span>
+        <div class="press-ind">
+          <span class="press-pip" id="pressPip"></span>
+          <span id="simPressVal">0%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Target + Input ─────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="target-area">
+        <div class="target-label">Target Letter</div>
+        <div class="target-letter" id="targetLetter">?</div>
+        <div class="target-morse-hint hidden" id="targetMorse">·—</div>
+        <button class="hint-toggle" onclick="toggleHint()" id="hintToggle">show hint</button>
+      </div>
+
+      <div class="seq-area">
+        <div class="seq-symbols" id="seqSymbols">
+          <span class="seq-empty" id="emptyHint">hold pressure to enter dots &amp; dashes</span>
+        </div>
+        <div class="decoded-row">
+          <span class="decoded-label">Decoded:</span>
+          <span class="decoded-letter" id="decodedLetter">?</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary" onclick="submitSequence()">✓ Submit (Tap)</button>
+        <button onclick="clearSequence()">✕ Clear (2Tap)</button>
+        <button onclick="nextTarget()">→ Next</button>
+        <button onclick="backspace()">⌫</button>
+      </div>
+    </section>
+
+    <!-- ── Score ──────────────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="score-row">
+        <span class="score-num" id="scoreNum">0 / 0</span>
+        <div class="score-bar"><div class="score-fill" id="scoreFill" style="width:0%"></div></div>
+        <span class="score-pct" id="scorePct">—</span>
+        <button onclick="resetScore()">Reset</button>
+      </div>
+    </section>
+
+    <!-- ── Morse Reference ────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="ref-title">Morse Reference</div>
+      <div class="morse-grid" id="morseGrid"></div>
+    </section>
+
+    <!-- ── HUD + Help ─────────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="hud">
+        <span>Pressure <span class="hud-val" id="hudPressure">0%</span></span>
+        <span>Gesture  <span class="hud-val" id="hudGesture">—</span></span>
+        <span>Symbols  <span class="hud-val" id="hudSymbols">0</span></span>
+      </div>
+      <div class="help-text">
+        <strong>⌨</strong>&nbsp;
+        Space = hold pressure &nbsp;·&nbsp;
+        T = Tap (submit) &nbsp;·&nbsp;
+        D = 2Tap (clear) &nbsp;·&nbsp;
+        R = next letter &nbsp;·&nbsp;
+        ⌫ = backspace
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Result flash overlay -->
+  <div class="result-flash">
+    <div class="flash-text" id="flashText"></div>
+  </div>
+
+  <div class="mudra-badge">Created with Mudra Studio</div>
+
+  <script>
+    const WS_URL          = 'ws://127.0.0.1:8766';
+    const PRESS_THRESHOLD = 30;   // % above which a press is active
+    const DOT_DASH_MS     = 300;  // ms boundary between dot and dash
+
+    // ── Morse tables ─────────────────────────────────────────────────────
+    const MORSE = {
+      A:'.-',   B:'-...',  C:'-.-.',  D:'-..',   E:'.',
+      F:'..-.',  G:'--.',   H:'....',  I:'..',    J:'.---',
+      K:'-.-',   L:'.-..',  M:'--',    N:'-.',    O:'---',
+      P:'.--.',  Q:'--.-',  R:'.-.',   S:'...',   T:'-',
+      U:'..-',   V:'...-',  W:'.--',   X:'-..-',  Y:'-.--',  Z:'--..'
+    };
+    const MORSE_REV = Object.fromEntries(Object.entries(MORSE).map(([k,v]) => [v,k]));
+
+    // ── App state ─────────────────────────────────────────────────────────
+    let target        = '';
+    let sequence      = [];
+    let pressActive   = false;
+    let pressStart    = null;
+    let scoreCorrect  = 0;
+    let scoreTotal    = 0;
+    let hintVisible   = false;
+
+    // ── DOM refs ──────────────────────────────────────────────────────────
+    const $targetLetter  = document.getElementById('targetLetter');
+    const $targetMorse   = document.getElementById('targetMorse');
+    const $hintToggle    = document.getElementById('hintToggle');
+    const $seqSymbols    = document.getElementById('seqSymbols');
+    const $emptyHint     = document.getElementById('emptyHint');
+    const $decodedLetter = document.getElementById('decodedLetter');
+    const $scoreNum      = document.getElementById('scoreNum');
+    const $scoreFill     = document.getElementById('scoreFill');
+    const $scorePct      = document.getElementById('scorePct');
+    const $morseGrid     = document.getElementById('morseGrid');
+    const $statusDot     = document.getElementById('statusDot');
+    const $statusText    = document.getElementById('statusText');
+    const $flashText     = document.getElementById('flashText');
+    const $hudPressure   = document.getElementById('hudPressure');
+    const $hudGesture    = document.getElementById('hudGesture');
+    const $hudSymbols    = document.getElementById('hudSymbols');
+    const $pressPip      = document.getElementById('pressPip');
+    const $simPressVal   = document.getElementById('simPressVal');
+    const $holdBtn       = document.getElementById('holdBtn');
+
+    // ── Morse reference grid ──────────────────────────────────────────────
+    function buildRef() {
+      $morseGrid.innerHTML = '';
+      for (const [letter, code] of Object.entries(MORSE)) {
+        const div = document.createElement('div');
+        div.className = 'ref-item' + (letter === target ? ' target-item' : '');
+        div.id = 'ref-' + letter;
+        div.innerHTML =
+          `<span class="ref-letter">${letter}</span>` +
+          `<span class="ref-code">${displayCode(code)}</span>`;
+        $morseGrid.appendChild(div);
+      }
+    }
+
+    function updateRefHighlight() {
+      document.querySelectorAll('.ref-item').forEach(el => el.classList.remove('target-item'));
+      const el = document.getElementById('ref-' + target);
+      if (el) el.classList.add('target-item');
+    }
+
+    function displayCode(code) {
+      return code.replace(/\./g, '·').replace(/-/g, '—');
+    }
+
+    // ── Sequence rendering ────────────────────────────────────────────────
+    function renderSequence() {
+      if (sequence.length === 0) {
+        $emptyHint.style.display = '';
+        $seqSymbols.innerHTML = '';
+        $seqSymbols.appendChild($emptyHint);
+        $decodedLetter.textContent = '?';
+        $hudSymbols.textContent = '0';
+        return;
+      }
+      $emptyHint.style.display = 'none';
+      $seqSymbols.innerHTML = sequence.map(s => {
+        const cls   = s === '.' ? 'sym-dot' : 'sym-dash';
+        const glyph = s === '.' ? '·' : '—';
+        return `<span class="sym ${cls}">${glyph}</span>`;
+      }).join('');
+      const decoded = MORSE_REV[sequence.join('')] || '?';
+      $decodedLetter.textContent = decoded;
+      $hudSymbols.textContent = sequence.length;
+    }
+
+    // ── Hint toggle ───────────────────────────────────────────────────────
+    function toggleHint() {
+      hintVisible = !hintVisible;
+      $targetMorse.classList.toggle('hidden', !hintVisible);
+      $hintToggle.textContent = hintVisible ? 'hide hint' : 'show hint';
+    }
+
+    // ── Pressure handler (edge-detection) ────────────────────────────────
+    function onPressureValue(pct) {
+      $hudPressure.textContent = pct + '%';
+      $simPressVal.textContent = pct + '%';
+
+      if (pct > PRESS_THRESHOLD && !pressActive) {
+        // Rising edge — start timing
+        pressActive = true;
+        pressStart  = Date.now();
+        $pressPip.classList.add('active');
+        $holdBtn.classList.add('pressing');
+        $targetLetter.classList.add('pressing');
+      } else if (pct <= PRESS_THRESHOLD && pressActive) {
+        // Falling edge — compute symbol
+        pressActive = false;
+        $pressPip.classList.remove('active');
+        $holdBtn.classList.remove('pressing');
+        $targetLetter.classList.remove('pressing');
+        if (pressStart !== null) {
+          const sym = (Date.now() - pressStart) < DOT_DASH_MS ? '.' : '-';
+          pressStart = null;
+          sequence.push(sym);
+          renderSequence();
+        }
+      }
+    }
+
+    // ── Gesture handler ───────────────────────────────────────────────────
+    function onGesture(type) {
+      $hudGesture.textContent = type;
+      if      (type === 'tap')        submitSequence();
+      else if (type === 'double_tap') clearSequence();
+    }
+
+    // ── Submit / Clear / Next / Backspace ─────────────────────────────────
+    function submitSequence() {
+      if (sequence.length === 0) return;
+      const decoded = MORSE_REV[sequence.join('')] || '?';
+      const correct = decoded === target;
+      scoreTotal++;
+      if (correct) scoreCorrect++;
+      updateScore();
+      showFlash(correct);
+      setTimeout(() => { clearSequence(); nextTarget(); }, 800);
+    }
+
+    function clearSequence() {
+      // Cancel any in-progress press
+      if (pressActive) {
+        pressActive = false;
+        pressStart  = null;
+        $pressPip.classList.remove('active');
+        $holdBtn.classList.remove('pressing');
+        $targetLetter.classList.remove('pressing');
+      }
+      sequence = [];
+      renderSequence();
+    }
+
+    function nextTarget() {
+      const letters = Object.keys(MORSE);
+      let next;
+      do { next = letters[Math.floor(Math.random() * letters.length)]; }
+      while (next === target && letters.length > 1);
+      target = next;
+      $targetLetter.textContent = target;
+      $targetMorse.textContent  = displayCode(MORSE[target]);
+      updateRefHighlight();
+      // Reset hint visibility on new target
+      hintVisible = false;
+      $targetMorse.classList.add('hidden');
+      $hintToggle.textContent = 'show hint';
+    }
+
+    function backspace() {
+      if (sequence.length > 0) { sequence.pop(); renderSequence(); }
+    }
+
+    // ── Score ─────────────────────────────────────────────────────────────
+    function updateScore() {
+      $scoreNum.textContent = `${scoreCorrect} / ${scoreTotal}`;
+      const pct = scoreTotal > 0 ? Math.round(scoreCorrect / scoreTotal * 100) : 0;
+      $scoreFill.style.width = pct + '%';
+      $scorePct.textContent  = scoreTotal > 0 ? pct + '%' : '—';
+    }
+
+    function resetScore() {
+      scoreCorrect = 0; scoreTotal = 0;
+      updateScore();
+    }
+
+    // ── Result flash ──────────────────────────────────────────────────────
+    let flashTimer = null;
+    function showFlash(correct) {
+      clearTimeout(flashTimer);
+      $flashText.textContent = correct ? '✓' : '✗';
+      $flashText.className   = 'flash-text show ' + (correct ? 'ok' : 'err');
+      flashTimer = setTimeout(() => { $flashText.className = 'flash-text'; }, 700);
+    }
+
+    // ── Sim panel helpers ─────────────────────────────────────────────────
+    let simPressing = false;
+
+    function simPressStart(e) {
+      if (e) e.preventDefault();
+      if (simPressing) return;
+      simPressing = true;
+      onPressureValue(80);
+    }
+
+    function simPressEnd(e) {
+      if (e) e.preventDefault();
+      if (!simPressing) return;
+      simPressing = false;
+      onPressureValue(0);
+    }
+
+    function simQuickDot() {
+      if (pressActive) return;  // don't interrupt a real press
+      onPressureValue(80);
+      setTimeout(() => onPressureValue(0), 120);
+    }
+
+    function simQuickDash() {
+      if (pressActive) return;
+      onPressureValue(80);
+      setTimeout(() => onPressureValue(0), 520);
+    }
+
+    function simGesture(type) {
+      ws.send(JSON.stringify({ command: 'trigger_gesture', data: { type } }));
+    }
+
+    // ── Mock WebSocket ────────────────────────────────────────────────────
+    class MudraWebSocket {
+      constructor(url) {
+        this._handlers      = {};
+        this._subscriptions = new Set();
+        this._timers        = [];
+        this._useMock       = false;
+
+        try {
+          this._ws           = new WebSocket(url);
+          this._ws.onopen    = (e) => { this._useMock = false; this._trigger('open', e); };
+          this._ws.onmessage = (e) => this._trigger('message', e);
+          this._ws.onclose   = (e) => this._trigger('close', e);
+          this._ws.onerror   = ()  => { this._startMock(); };
+        } catch (e) {
+          this._startMock();
+        }
+      }
+
+      set onopen(fn)    { this._handlers.open    = fn; }
+      set onmessage(fn) { this._handlers.message = fn; }
+      set onclose(fn)   { this._handlers.close   = fn; }
+      set onerror(fn)   { this._handlers.error   = fn; }
+
+      _trigger(event, data) { if (this._handlers[event]) this._handlers[event](data); }
+
+      _emit(payload) {
+        this._trigger('message', { data: JSON.stringify(payload) });
+      }
+
+      send(raw) {
+        if (!this._useMock) { this._ws.send(raw); return; }
+        const cmd = JSON.parse(raw);
+        if (cmd.command === 'subscribe') this._subscriptions.add(cmd.signal);
+        if (cmd.command === 'trigger_gesture') {
+          this._emit({
+            type: 'gesture',
+            data: { type: cmd.data.type, confidence: 0.99, timestamp: Date.now() },
+            timestamp: Date.now()
+          });
+        }
+      }
+
+      _startMock() {
+        this._useMock = true;
+        // Passive mock — no auto-firing intervals.
+        // Signals fire only from sim panel buttons and keyboard shortcuts.
+        setTimeout(() => {
+          this._trigger('open', {});
+          this._emit({
+            type: 'connection_status',
+            data: { status: 'connected', message: 'Mudra Companion ready (simulated)' },
+            timestamp: Date.now()
+          });
+        }, 100);
+      }
+
+      close() {
+        this._timers.forEach(t => clearInterval(t));
+        if (!this._useMock && this._ws) this._ws.close();
+      }
+    }
+
+    // ── WebSocket setup ───────────────────────────────────────────────────
+    const ws = new MudraWebSocket(WS_URL);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ command: 'subscribe', signal: 'gesture'  }));
+      ws.send(JSON.stringify({ command: 'subscribe', signal: 'pressure' }));
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'connection_status') {
+        const ok = msg.data.status === 'connected';
+        $statusDot.className  = 'status-dot' + (ok ? ' connected' : '');
+        $statusText.textContent = msg.data.message || (ok ? 'Connected' : 'Disconnected');
+      } else if (msg.type === 'gesture') {
+        onGesture(msg.data.type);
+      } else if (msg.type === 'pressure') {
+        onPressureValue(msg.data.value);
+      }
+    };
+
+    ws.onclose = () => {
+      $statusDot.className  = 'status-dot';
+      $statusText.textContent = 'Disconnected';
+    };
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────
+    let spaceHeld = false;
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        spaceHeld = true;
+        onPressureValue(80);
+      } else if ((e.key === 't' || e.key === 'T') && !e.repeat) {
+        onGesture('tap');
+      } else if ((e.key === 'd' || e.key === 'D') && !e.repeat) {
+        onGesture('double_tap');
+      } else if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
+        nextTarget();
+      } else if (e.code === 'Backspace') {
+        e.preventDefault();
+        backspace();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        spaceHeld = false;
+        onPressureValue(0);
+      }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    buildRef();
+    nextTarget();
+    renderSequence();
+    updateScore();
+  </script>
+</body>
+</html>
