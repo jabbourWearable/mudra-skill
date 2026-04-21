@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Breathing Guide · Mudra</title>
+  <style>
+    :root {
+      --card: rgba(255,255,255,0.72);
+      --card-border: rgba(175,180,210,0.28);
+      --primary: #8b7fc4;
+      --accent: #6eb8a0;
+      --text: #4d5468;
+      --text-secondary: #98a3bc;
+      --success: #5dba8a;
+      --warning: #c9a04a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(145deg, #f0eff8 0%, #eef5f2 45%, #f5f0ee 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 16px 48px;
+    }
+
+    .app {
+      width: min(640px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 16px 20px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    /* ── Header ── */
+    .header-title { font-size: 1.15rem; font-weight: 700; color: var(--primary); }
+    .header-sub   { font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px; }
+    .header-row   { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+    .status {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 0.82rem; padding: 5px 12px;
+      border-radius: 99px; border: 1px solid var(--card-border);
+      background: rgba(255,255,255,0.55);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 0 3px rgba(201,160,74,.22);
+      transition: background .3s, box-shadow .3s;
+    }
+    .dot.connected { background: var(--success); box-shadow: 0 0 0 3px rgba(93,186,138,.22); }
+
+    /* ── Simulator strip ── */
+    .sim-row {
+      display: flex; align-items: center; gap: 10px;
+      flex-wrap: wrap;
+    }
+    .sim-label {
+      font-size: 0.71rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .sim-btn {
+      padding: 5px 14px; border-radius: 8px; border: 1px solid var(--card-border);
+      background: rgba(255,255,255,0.65); color: var(--text);
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .sim-btn:hover  { background: rgba(139,127,196,.18); }
+    .sim-btn:active { transform: scale(.92); }
+    .sim-pressure {
+      display: flex; align-items: center; gap: 8px;
+      border-left: 1px solid var(--card-border); padding-left: 10px;
+    }
+    #simPSlider { width: 96px; accent-color: var(--primary); cursor: pointer; }
+    .sim-pval   { font-size: 0.78rem; color: var(--text-secondary); min-width: 32px; }
+
+    /* ── Breath stage ── */
+    .breath-stage {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 30px 20px 26px;
+    }
+    .pattern-label {
+      font-size: 0.71rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .13em; color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    /* Ring container */
+    .ring-wrap {
+      position: relative;
+      width: 250px; height: 250px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px;
+    }
+    .ripple-ring {
+      position: absolute;
+      width: 154px; height: 154px;
+      border-radius: 50%;
+      border: 2px solid #89b8e8;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) scale(1);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .breath-circle {
+      width: 154px; height: 154px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #c6dff8, #80b4e6);
+      box-shadow: 0 0 36px rgba(137,180,232,.5), 0 0 72px rgba(137,180,232,.18);
+      will-change: transform;
+      transform-origin: center;
+      position: relative; z-index: 1;
+    }
+
+    /* Phase row */
+    .phase-row {
+      display: flex; align-items: baseline; gap: 12px;
+      margin-bottom: 20px; min-height: 46px;
+    }
+    .phase-name {
+      font-size: 1.05rem; font-weight: 700; color: var(--primary);
+      min-width: 72px; text-align: right;
+      transition: color .6s ease;
+    }
+    .phase-count {
+      font-size: 2.4rem; font-weight: 700; color: var(--text);
+      line-height: 1; min-width: 46px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Pattern pills */
+    .pills { display: flex; gap: 7px; margin-bottom: 9px; }
+    .pill {
+      padding: 4px 14px; border-radius: 99px;
+      font-size: 0.75rem; font-weight: 600;
+      border: 1.5px solid var(--card-border);
+      background: rgba(255,255,255,.5); color: var(--text-secondary);
+      cursor: default; transition: all .35s;
+    }
+    .pill.active {
+      border-color: var(--primary);
+      background: rgba(139,127,196,.14);
+      color: var(--primary);
+    }
+
+    .timing-hint {
+      font-size: 0.74rem; color: var(--text-secondary);
+      letter-spacing: .06em; font-variant-numeric: tabular-nums;
+    }
+
+    /* ── HUD ── */
+    .hud { display: flex; gap: 9px; flex-wrap: wrap; }
+    .hud-metric {
+      flex: 1; min-width: 88px;
+      border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 10px 13px;
+      background: rgba(255,255,255,.42);
+    }
+    .hud-lbl  { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); }
+    .hud-val  { font-size: 1rem; font-weight: 700; color: var(--primary); margin-top: 4px; transition: color .4s; }
+    .bar      { height: 4px; border-radius: 99px; background: rgba(139,127,196,.12); margin-top: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--primary)); transition: width 60ms linear; }
+
+    .keys {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-top: 10px; font-size: .77rem; color: var(--text-secondary);
+    }
+    kbd {
+      display: inline-block; background: rgba(255,255,255,.7);
+      border: 1px solid var(--card-border); border-radius: 5px;
+      padding: 0 5px; font-size: .7rem; font-family: monospace;
+    }
+
+    .mudra-badge {
+      position: fixed; bottom: 10px; right: 14px;
+      font-size: 10px; color: var(--text-secondary);
+      opacity: .45; pointer-events: none; letter-spacing: .04em;
+    }
+
+    @keyframes rippleExpand {
+      0%   { opacity: .4;  transform: translate(-50%,-50%) scale(.85); }
+      100% { opacity: 0;   transform: translate(-50%,-50%) scale(2.5); }
+    }
+
+    @media (max-width: 420px) {
+      .ring-wrap { width: 210px; height: 210px; }
+      .breath-circle, .ripple-ring { width: 128px; height: 128px; }
+    }
+  </style>
+</head>
+<body>
+<main class="app">
+
+  <!-- Header -->
+  <div class="card">
+    <div class="header-title">Breathing Guide</div>
+    <div class="header-sub">Mudra Band · Pressure sets intensity · Tap to cycle pattern</div>
+    <div class="header-row">
+      <div class="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Connecting to Mudra…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulator strip -->
+  <div class="card">
+    <div class="sim-row">
+      <span class="sim-label">Sim</span>
+      <button class="sim-btn" id="simTap">Tap</button>
+      <div class="sim-pressure">
+        <span class="sim-label">Pressure</span>
+        <input type="range" min="0" max="100" value="50" id="simPSlider">
+        <span class="sim-pval" id="simPVal">50%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breathing stage -->
+  <div class="card breath-stage">
+    <div class="pattern-label" id="patternLabel">Box Breathing</div>
+    <div class="ring-wrap">
+      <div class="ripple-ring" id="rip1"></div>
+      <div class="ripple-ring" id="rip2"></div>
+      <div class="breath-circle" id="circle"></div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-name" id="phaseName">Inhale</div>
+      <div class="phase-count" id="phaseCt">4</div>
+    </div>
+    <div class="pills" id="pills">
+      <div class="pill active">Box</div>
+      <div class="pill">4-7-8</div>
+      <div class="pill">Relaxing</div>
+    </div>
+    <div class="timing-hint" id="timingHint">4 · 4 · 4 · 4</div>
+  </div>
+
+  <!-- HUD -->
+  <div class="card">
+    <div class="hud">
+      <div class="hud-metric">
+        <div class="hud-lbl">Pressure</div>
+        <div class="hud-val" id="hudP">50%</div>
+        <div class="bar"><div class="bar-fill" id="hudPBar" style="width:50%"></div></div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-lbl">Gesture</div>
+        <div class="hud-val" id="hudG">—</div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-lbl">Phase</div>
+        <div class="hud-val" id="hudPhase">Inhale</div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-lbl">Cycle</div>
+        <div class="hud-val" id="hudCycle">1</div>
+      </div>
+    </div>
+    <div class="keys">
+      <span><kbd>T</kbd> Tap (next pattern)</span>
+      <span><kbd>↑</kbd><kbd>↓</kbd> Pressure ±10</span>
+    </div>
+  </div>
+
+</main>
+<div class="mudra-badge">Powered by Mudra Band</div>
+
+<script>
+// ── MudraWebSocket ──────────────────────────────────────────────────────────
+class MudraWebSocket {
+  constructor(url) {
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._timers = [];
+    this._useMock = false;
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen    = (e) => { this._useMock = false; this._trigger('open', e); };
+      this._ws.onmessage = (e) => this._trigger('message', e);
+      this._ws.onclose   = (e) => this._trigger('close', e);
+      this._ws.onerror   = ()  => this._startMock();
+    } catch (e) { this._startMock(); }
+  }
+  set onopen(fn)    { this._handlers.open    = fn; }
+  set onmessage(fn) { this._handlers.message = fn; }
+  set onclose(fn)   { this._handlers.close   = fn; }
+  set onerror(fn)   { this._handlers.error   = fn; }
+  _trigger(ev, d)   { if (this._handlers[ev]) this._handlers[ev](d); }
+  _emit(p)          { this._trigger('message', { data: JSON.stringify(p) }); }
+  send(raw) {
+    if (!this._useMock) { this._ws.send(raw); return; }
+    const cmd = JSON.parse(raw);
+    if (cmd.command === 'subscribe') this._subscriptions.add(cmd.signal);
+    if (cmd.command === 'trigger_gesture')
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: .99, timestamp: Date.now() }, timestamp: Date.now() });
+  }
+  _startMock() {
+    this._useMock = true;
+    setTimeout(() => {
+      this._trigger('open', {});
+      this._emit({ type: 'connection_status', data: { status: 'connected', message: 'Mudra Companion ready (simulated)' }, timestamp: Date.now() });
+    }, 120);
+    // No auto-firing intervals — simulator panel and keyboard are the only signal sources
+  }
+  close() {
+    this._timers.forEach(clearInterval);
+    if (!this._useMock && this._ws) this._ws.close();
+  }
+}
+
+// ── Breathing patterns ──────────────────────────────────────────────────────
+const PATTERNS = [
+  { name: 'Box Breathing',   phases: ['Inhale','Hold','Exhale','Hold'], times: [4,4,4,4] },
+  { name: '4-7-8 Breathing', phases: ['Inhale','Hold','Exhale'],        times: [4,7,8]   },
+  { name: 'Relaxing Breath', phases: ['Inhale','Exhale'],               times: [4,8]     },
+];
+
+const PHASE_STYLE = {
+  Inhale: { bg: 'radial-gradient(circle at 38% 35%, #c6dff8, #80b4e6)', glow: '130,176,230', ring: '#89b8e8', nameColor: '#7aaee0' },
+  Hold:   { bg: 'radial-gradient(circle at 38% 35%, #beeede, #62b89e)', glow: '98,184,158',  ring: '#6ec4a8', nameColor: '#5daf95' },
+  Exhale: { bg: 'radial-gradient(circle at 38% 35%, #e2d0f0, #b47ed6)', glow: '180,126,214', ring: '#c08fd8', nameColor: '#aa7acc' },
+};
+
+// ── App state ────────────────────────────────────────────────────────────────
+let patternIdx    = 0;
+let phaseIdx      = 0;
+let phaseProgress = 0;
+let cycleCount    = 1;
+let lastTS        = null;
+let lastBreath    = 0;
+let lastPhaseName = '';
+
+let pressureRaw    = 50;
+let pressureSpring = 50;
+let pressureVel    = 0;
+
+let scaleTarget = 0.82;
+let scaleSpring = 0.82;
+let scaleVel    = 0;
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const circle     = document.getElementById('circle');
+const phaseName  = document.getElementById('phaseName');
+const phaseCt    = document.getElementById('phaseCt');
+const patternLbl = document.getElementById('patternLabel');
+const pillsEl    = document.getElementById('pills');
+const timingHint = document.getElementById('timingHint');
+const statusDot  = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const hudP       = document.getElementById('hudP');
+const hudPBar    = document.getElementById('hudPBar');
+const hudG       = document.getElementById('hudG');
+const hudPhase   = document.getElementById('hudPhase');
+const hudCycle   = document.getElementById('hudCycle');
+const rip1       = document.getElementById('rip1');
+const rip2       = document.getElementById('rip2');
+const simPSlider = document.getElementById('simPSlider');
+const simPVal    = document.getElementById('simPVal');
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function easeInOut(t) { return t < .5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+
+function springStep(cur, tgt, vel, k, damp) {
+  vel = vel * damp + (tgt - cur) * k;
+  return { val: cur + vel, vel };
+}
+
+function fireRipple(style) {
+  [rip1, rip2].forEach((r, i) => {
+    r.style.borderColor = style.ring;
+    r.style.animation = 'none';
+    void r.offsetWidth;
+    r.style.animation = `rippleExpand ${1.7 + i * .5}s ${i * .44}s ease-out forwards`;
+  });
+}
+
+// ── Signal handlers ────────────────────────────────────────────────────────
+function handleGesture(data) {
+  if (data.type !== 'tap') return;
+  patternIdx    = (patternIdx + 1) % PATTERNS.length;
+  phaseIdx      = 0;
+  phaseProgress = 0;
+  lastBreath    = 0;
+  lastPhaseName = '';
+  updatePatternUI();
+  hudG.textContent = 'tap';
+  hudG.style.color = 'var(--primary)';
+  setTimeout(() => { hudG.style.color = ''; }, 600);
+}
+
+function handlePressure(data) {
+  pressureRaw = data.normalized != null ? data.normalized * 100 : data.value;
+  hudP.textContent    = Math.round(pressureRaw) + '%';
+  hudPBar.style.width = pressureRaw + '%';
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function updatePatternUI() {
+  const p = PATTERNS[patternIdx];
+  patternLbl.textContent = p.name;
+  timingHint.textContent = p.times.join(' · ');
+  pillsEl.querySelectorAll('.pill').forEach((pl, i) => pl.classList.toggle('active', i === patternIdx));
+}
+
+// ── Animation loop ────────────────────────────────────────────────────────────
+function tick(ts) {
+  if (lastTS === null) lastTS = ts;
+  const dt = Math.min((ts - lastTS) / 1000, 0.1);
+  lastTS = ts;
+
+  const pattern = PATTERNS[patternIdx];
+
+  // Advance phase
+  phaseProgress += dt / pattern.times[phaseIdx];
+  if (phaseProgress >= 1) {
+    const overflow = phaseProgress - 1;
+    const wasLast  = phaseIdx === pattern.phases.length - 1;
+    phaseIdx = (phaseIdx + 1) % pattern.phases.length;
+    if (wasLast) { cycleCount++; hudCycle.textContent = cycleCount; }
+    phaseProgress = Math.min(overflow / pattern.times[phaseIdx], 0.999);
+  }
+
+  const curPhase = pattern.phases[phaseIdx];
+  const style    = PHASE_STYLE[curPhase] || PHASE_STYLE.Inhale;
+
+  // Phase transition
+  if (curPhase !== lastPhaseName) {
+    if (curPhase === 'Inhale') fireRipple(style);
+    lastPhaseName = curPhase;
+    circle.style.background = style.bg;
+    phaseName.style.color   = style.nameColor;
+    hudPhase.style.color    = style.nameColor;
+  }
+
+  // Breath expansion (0=contracted, 1=expanded); Hold freezes last value
+  let breath;
+  if      (curPhase === 'Inhale') { breath = easeInOut(phaseProgress); lastBreath = breath; }
+  else if (curPhase === 'Exhale') { breath = 1 - easeInOut(phaseProgress); lastBreath = breath; }
+  else                             { breath = lastBreath; }
+
+  // Smooth pressure spring
+  const ps = springStep(pressureSpring, pressureRaw, pressureVel, .08, .78);
+  pressureSpring = ps.val; pressureVel = ps.vel;
+
+  const pN = Math.max(0, Math.min(1, pressureSpring / 100));
+  const minSc = 0.46 + pN * 0.24;   // 0.46 → 0.70
+  const maxSc = 0.96 + pN * 0.82;   // 0.96 → 1.78
+  scaleTarget = minSc + (maxSc - minSc) * breath;
+
+  // Smooth scale spring
+  const ss = springStep(scaleSpring, scaleTarget, scaleVel, .13, .81);
+  scaleSpring = ss.val; scaleVel = ss.vel;
+  circle.style.transform = `scale(${scaleSpring.toFixed(4)})`;
+
+  // Dynamic glow
+  const g = 28 + breath * 38;
+  circle.style.boxShadow = `0 0 ${g}px rgba(${style.glow},.58), 0 0 ${g * 2}px rgba(${style.glow},.16)`;
+
+  // Phase label + countdown
+  const secsLeft = Math.ceil((1 - phaseProgress) * pattern.times[phaseIdx]);
+  phaseName.textContent  = curPhase;
+  phaseCt.textContent    = Math.max(1, secsLeft);
+  hudPhase.textContent   = curPhase;
+
+  requestAnimationFrame(tick);
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+const ws = new MudraWebSocket('ws://127.0.0.1:8766');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'gesture' }));
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'pressure' }));
+};
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (msg.type === 'connection_status') {
+    const ok = msg.data.status === 'connected';
+    statusDot.className   = 'dot' + (ok ? ' connected' : '');
+    statusText.textContent = ok ? 'Mudra Band connected' : (msg.data.message || 'Disconnected');
+  }
+  if (msg.type === 'gesture')  handleGesture(msg.data);
+  if (msg.type === 'pressure') handlePressure(msg.data);
+};
+
+ws.onclose = () => { statusDot.className = 'dot'; statusText.textContent = 'Disconnected'; };
+
+// ── Simulator ─────────────────────────────────────────────────────────────────
+document.getElementById('simTap').addEventListener('click', () =>
+  ws.send(JSON.stringify({ command: 'trigger_gesture', data: { type: 'tap' } }))
+);
+
+simPSlider.addEventListener('input', () => {
+  const v = +simPSlider.value;
+  simPVal.textContent = v + '%';
+  handlePressure({ value: v, normalized: v / 100 });
+});
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 't' || e.key === 'T') {
+    ws.send(JSON.stringify({ command: 'trigger_gesture', data: { type: 'tap' } }));
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const v = Math.min(100, +simPSlider.value + 10);
+    simPSlider.value = v; simPVal.textContent = v + '%';
+    handlePressure({ value: v, normalized: v / 100 });
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const v = Math.max(0, +simPSlider.value - 10);
+    simPSlider.value = v; simPVal.textContent = v + '%';
+    handlePressure({ value: v, normalized: v / 100 });
+  }
+});
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+updatePatternUI();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

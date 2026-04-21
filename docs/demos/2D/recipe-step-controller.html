@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe Step Controller · Mudra</title>
+  <style>
+    /* Kitchen theme: warm cream + herb green + terracotta */
+    :root {
+      --bg: #f5f0e8;
+      --card: #ffffff;
+      --primary: #3d7a5a;
+      --accent: #c9522a;
+      --done-bg: #edf7f0;
+      --done-border: #a8d5b5;
+      --text: #1c2b1e;
+      --text-secondary: #6b7a6d;
+      --success: #2ecc71;
+      --warning: #e9a825;
+      --border: rgba(61, 122, 90, 0.15);
+      --shadow: 0 4px 24px rgba(30, 60, 35, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px 60px;
+    }
+
+    .app {
+      width: min(660px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, p { margin: 0; }
+
+    /* ── Header ── */
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .app-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(61, 122, 90, 0.04);
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 0 3px rgba(233, 168, 37, 0.2);
+      transition: background 200ms, box-shadow 200ms;
+    }
+    .dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.2);
+    }
+
+    .mode-badge {
+      font-size: 0.75rem;
+      color: var(--primary);
+      background: rgba(61, 122, 90, 0.1);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-weight: 600;
+    }
+
+    /* ── Simulator strip ── */
+    .sim-strip { padding: 10px 16px; }
+
+    .sim-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .sim-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .sim-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sim-group-label {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 80ms, opacity 80ms;
+      font-family: inherit;
+    }
+    button:active { transform: scale(0.93); opacity: 0.82; }
+
+    .btn-dir {
+      background: #f0f8f3;
+      color: var(--primary);
+      border: 1.5px solid rgba(61, 122, 90, 0.4);
+    }
+    .btn-gest {
+      background: #fdf3ee;
+      color: var(--accent);
+      border: 1.5px solid rgba(201, 82, 42, 0.4);
+    }
+
+    /* ── Progress dots ── */
+    .progress-dots {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+
+    .prog-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: rgba(61, 122, 90, 0.18);
+      transition: background 250ms, transform 250ms;
+    }
+    .prog-dot.active {
+      background: var(--primary);
+      transform: scale(1.45);
+    }
+    .prog-dot.done {
+      background: var(--success);
+    }
+
+    /* ── Step card ── */
+    .step-card {
+      padding: 28px 24px;
+      text-align: center;
+      transition: background 300ms, border-color 300ms, opacity 200ms, transform 200ms;
+    }
+    .step-card.is-done {
+      background: var(--done-bg);
+      border-color: var(--done-border);
+    }
+
+    .step-number {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .step-emoji {
+      font-size: 2.8rem;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .step-title {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+
+    .step-desc {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .step-done-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: var(--success);
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 700;
+      opacity: 0;
+      transform: scale(0.8) translateY(4px);
+      transition: opacity 250ms, transform 250ms;
+    }
+    .step-done-badge.visible {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    /* ── Timer ── */
+    .timer-display {
+      margin-top: 20px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .timer-display.active { display: flex; }
+
+    .timer-ring {
+      position: relative;
+      width: 104px; height: 104px;
+    }
+    .timer-ring svg { transform: rotate(-90deg); }
+    .timer-track { fill: none; stroke: rgba(201, 82, 42, 0.12); stroke-width: 8; }
+    .timer-progress {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .timer-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .timer-time {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .timer-status {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-top: 4px;
+      text-align: center;
+      max-width: 80px;
+    }
+    .timer-status.done-msg { color: var(--success); }
+
+    /* ── Nav hint ── */
+    .nav-hint {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+    .nav-hint .hint-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .hint-key {
+      background: rgba(61, 122, 90, 0.1);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* ── HUD ── */
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .hud-metric {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #f9fbf9;
+    }
+    .hud-label {
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .hud-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pulse { animation: pulse 200ms ease; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.08); }
+    }
+
+    .mudra-badge {
+      position: fixed;
+      bottom: 10px; right: 12px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      opacity: 0.5;
+      pointer-events: none;
+      font-family: inherit;
+    }
+
+    @media (max-width: 520px) {
+      .step-title { font-size: 1.3rem; }
+      .hud { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<main class="app">
+
+  <!-- Header -->
+  <section class="card">
+    <div class="header-top">
+      <div class="app-title">
+        🍝 Recipe Step Controller
+      </div>
+      <div class="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+    </div>
+    <span class="mode-badge">Direction Mode · Classic Spaghetti Carbonara</span>
+  </section>
+
+  <!-- Simulator strip -->
+  <section class="card sim-strip">
+    <div class="sim-label">Simulator Panel</div>
+    <div class="sim-row">
+      <div class="sim-group">
+        <span class="sim-group-label">Navigate:</span>
+        <button class="btn-dir" onclick="simDir('Up')">↑ Prev</button>
+        <button class="btn-dir" onclick="simDir('Down')">↓ Next</button>
+      </div>
+      <div class="sim-group">
+        <span class="sim-group-label">Gesture:</span>
+        <button class="btn-gest" onclick="simGesture('tap')">Tap ✓</button>
+        <button class="btn-gest" onclick="simGesture('double_tap')">2Tap ⏱</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Progress dots -->
+  <div class="progress-dots" id="progressDots"></div>
+
+  <!-- Step card -->
+  <section class="card step-card" id="stepCard">
+    <div class="step-number" id="stepNumber">Step 1 of 5</div>
+    <span class="step-emoji" id="stepEmoji"></span>
+    <div class="step-title" id="stepTitle"></div>
+    <div class="step-desc" id="stepDesc"></div>
+    <div class="step-done-badge" id="doneBadge">✓ Step Complete</div>
+
+    <div class="timer-display" id="timerDisplay">
+      <div class="timer-ring">
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle class="timer-track" cx="52" cy="52" r="44"/>
+          <circle class="timer-progress" id="timerArc" cx="52" cy="52" r="44"
+            stroke-dasharray="276.46" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-time" id="timerTime">0:00</div>
+        </div>
+      </div>
+      <div class="timer-status" id="timerStatus">Timer running…</div>
+    </div>
+  </section>
+
+  <!-- Nav hint -->
+  <div class="nav-hint" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 16px;box-shadow:var(--shadow);">
+    <span class="hint-item"><span class="hint-key">↑↓</span> Navigate steps</span>
+    <span class="hint-item"><span class="hint-key">T</span> Mark done</span>
+    <span class="hint-item"><span class="hint-key">D</span> Start timer</span>
+  </div>
+
+  <!-- Telemetry HUD -->
+  <section class="card">
+    <div class="hud">
+      <div class="hud-metric">
+        <div class="hud-label">Direction</div>
+        <div class="hud-value" id="hudDir">—</div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-label">Gesture</div>
+        <div class="hud-value" id="hudGest">—</div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-label">Step</div>
+        <div class="hud-value" id="hudStep">1 / 5</div>
+      </div>
+      <div class="hud-metric">
+        <div class="hud-label">Timer</div>
+        <div class="hud-value" id="hudTimer">off</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="mudra-badge">Powered by Mudra Band</div>
+
+<script>
+// ── Recipe data ──────────────────────────────────────────────────────────────
+const STEPS = [
+  {
+    emoji: '🪣',
+    title: 'Boil Salted Water',
+    desc: 'Fill a large pot with water. Add 1 tbsp of coarse salt and bring to a rolling boil over high heat.',
+    timerSec: 600
+  },
+  {
+    emoji: '🍝',
+    title: 'Cook the Pasta',
+    desc: 'Add 200g spaghetti to the boiling water. Cook 8–10 minutes until al dente. Reserve ½ cup pasta water before draining.',
+    timerSec: 480
+  },
+  {
+    emoji: '🥓',
+    title: 'Fry the Pancetta',
+    desc: 'Cook 100g diced pancetta in a dry pan over medium heat until golden and crispy, about 5 minutes. Remove from heat.',
+    timerSec: 300
+  },
+  {
+    emoji: '🥚',
+    title: 'Whisk Eggs & Cheese',
+    desc: 'In a bowl, whisk together 2 egg yolks and 1 whole egg with 50g grated Pecorino Romano and a generous grind of black pepper.',
+    timerSec: 120
+  },
+  {
+    emoji: '🍽️',
+    title: 'Combine & Serve',
+    desc: 'Off the heat, toss hot pasta with pancetta. Add egg mixture and stir quickly, adding splashes of pasta water to create a silky sauce. Serve immediately.',
+    timerSec: 60
+  }
+];
+
+const CIRCUM = 2 * Math.PI * 44; // ≈ 276.46
+
+// ── State ────────────────────────────────────────────────────────────────────
+let currentStep = 0;
+let stepsDone   = new Array(STEPS.length).fill(false);
+let timerInterval  = null;
+let timerRemaining = 0;
+let timerTotal     = 0;
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const statusDot   = document.getElementById('statusDot');
+const statusText  = document.getElementById('statusText');
+const stepCard    = document.getElementById('stepCard');
+const stepNumber  = document.getElementById('stepNumber');
+const stepEmoji   = document.getElementById('stepEmoji');
+const stepTitle   = document.getElementById('stepTitle');
+const stepDesc    = document.getElementById('stepDesc');
+const doneBadge   = document.getElementById('doneBadge');
+const timerDisplay = document.getElementById('timerDisplay');
+const timerArc    = document.getElementById('timerArc');
+const timerTime   = document.getElementById('timerTime');
+const timerStatus = document.getElementById('timerStatus');
+const progressDots = document.getElementById('progressDots');
+const hudDir   = document.getElementById('hudDir');
+const hudGest  = document.getElementById('hudGest');
+const hudStep  = document.getElementById('hudStep');
+const hudTimer = document.getElementById('hudTimer');
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function buildDots() {
+  progressDots.innerHTML = '';
+  STEPS.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = ['prog-dot', i === currentStep ? 'active' : '', stepsDone[i] ? 'done' : ''].join(' ').trim();
+    progressDots.appendChild(d);
+  });
+}
+
+function renderStep(animDir = 0) {
+  const step = STEPS[currentStep];
+
+  // Slide animation
+  stepCard.style.transition = 'none';
+  stepCard.style.opacity = '0';
+  stepCard.style.transform = `translateY(${animDir > 0 ? 12 : animDir < 0 ? -12 : 8}px)`;
+
+  requestAnimationFrame(() => {
+    stepNumber.textContent = `Step ${currentStep + 1} of ${STEPS.length}`;
+    stepEmoji.textContent  = step.emoji;
+    stepTitle.textContent  = step.title;
+    stepDesc.textContent   = step.desc;
+    stepCard.className = 'card step-card' + (stepsDone[currentStep] ? ' is-done' : '');
+    doneBadge.className = 'step-done-badge' + (stepsDone[currentStep] ? ' visible' : '');
+    hudStep.textContent = `${currentStep + 1} / ${STEPS.length}`;
+    buildDots();
+
+    requestAnimationFrame(() => {
+      stepCard.style.transition = 'opacity 220ms ease, transform 220ms ease, background 300ms, border-color 300ms';
+      stepCard.style.opacity = '1';
+      stepCard.style.transform = 'translateY(0)';
+    });
+  });
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timerTotal     = STEPS[currentStep].timerSec;
+  timerRemaining = timerTotal;
+  timerDisplay.classList.add('active');
+  timerStatus.className = 'timer-status';
+  timerStatus.textContent = 'Timer running…';
+  updateTimerRing();
+  timerInterval = setInterval(() => {
+    timerRemaining = Math.max(0, timerRemaining - 1);
+    updateTimerRing();
+    hudTimer.textContent = timerTime.textContent;
+    if (timerRemaining === 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerStatus.textContent = '✓ Done — next step!';
+      timerStatus.className = 'timer-status done-msg';
+      hudTimer.textContent = 'done';
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timerDisplay.classList.remove('active');
+  timerStatus.className = 'timer-status';
+  hudTimer.textContent = 'off';
+}
+
+function updateTimerRing() {
+  const m = Math.floor(timerRemaining / 60);
+  const s = timerRemaining % 60;
+  timerTime.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  const frac = timerTotal > 0 ? timerRemaining / timerTotal : 0;
+  timerArc.style.strokeDashoffset = CIRCUM * (1 - frac);
+}
+
+// ── Signal handlers ───────────────────────────────────────────────────────────
+function handleNavDirection({ direction }) {
+  hudDir.textContent = direction;
+  hudDir.classList.remove('pulse');
+  void hudDir.offsetWidth;
+  hudDir.classList.add('pulse');
+
+  if (direction === 'Up' && currentStep > 0) {
+    currentStep--;
+    stopTimer();
+    renderStep(-1);
+  } else if (direction === 'Down' && currentStep < STEPS.length - 1) {
+    currentStep++;
+    stopTimer();
+    renderStep(1);
+  }
+}
+
+function handleGesture({ type }) {
+  const labels = { tap: 'Tap', double_tap: '2Tap', twist: 'Twist', double_twist: '2Twist' };
+  hudGest.textContent = labels[type] || type;
+  hudGest.classList.remove('pulse');
+  void hudGest.offsetWidth;
+  hudGest.classList.add('pulse');
+
+  if (type === 'tap') {
+    stepsDone[currentStep] = !stepsDone[currentStep];
+    stepCard.className = 'card step-card' + (stepsDone[currentStep] ? ' is-done' : '');
+    doneBadge.className = 'step-done-badge' + (stepsDone[currentStep] ? ' visible' : '');
+    buildDots();
+  } else if (type === 'double_tap') {
+    startTimer();
+  }
+}
+
+// ── Simulator helpers ─────────────────────────────────────────────────────────
+function simDir(direction) {
+  handleNavDirection({ direction, timestamp: Date.now() });
+  hudDir.textContent = direction;
+}
+
+function simGesture(type) {
+  ws.send(JSON.stringify({ command: 'trigger_gesture', data: { type } }));
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'ArrowUp':   e.preventDefault(); simDir('Up');         break;
+    case 'ArrowDown': e.preventDefault(); simDir('Down');       break;
+    case 't': case 'T': simGesture('tap');                      break;
+    case 'd': case 'D': simGesture('double_tap');               break;
+  }
+});
+
+// ── Mock WebSocket (passive — no auto-firing intervals) ───────────────────────
+class MudraWebSocket {
+  constructor(url) {
+    this._handlers     = {};
+    this._subscriptions = new Set();
+    this._useMock      = false;
+
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen    = (e) => { this._useMock = false; this._trigger('open', e); };
+      this._ws.onmessage = (e) => this._trigger('message', e);
+      this._ws.onclose   = (e) => this._trigger('close', e);
+      this._ws.onerror   = ()  => this._startMock();
+    } catch (e) {
+      this._startMock();
+    }
+  }
+
+  set onopen(fn)    { this._handlers.open    = fn; }
+  set onmessage(fn) { this._handlers.message = fn; }
+  set onclose(fn)   { this._handlers.close   = fn; }
+  set onerror(fn)   { this._handlers.error   = fn; }
+
+  _trigger(event, data) {
+    if (this._handlers[event]) this._handlers[event](data);
+  }
+
+  _emit(payload) {
+    this._trigger('message', { data: JSON.stringify(payload) });
+  }
+
+  send(raw) {
+    if (!this._useMock) { this._ws.send(raw); return; }
+    const cmd = JSON.parse(raw);
+    if (cmd.command === 'subscribe') this._subscriptions.add(cmd.signal);
+    if (cmd.command === 'trigger_gesture') {
+      this._emit({
+        type: 'gesture',
+        data: { type: cmd.data.type, confidence: 0.99, timestamp: Date.now() },
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  _startMock() {
+    this._useMock = true;
+    setTimeout(() => {
+      this._trigger('open', {});
+      this._emit({
+        type: 'connection_status',
+        data: { status: 'connected', message: 'Mudra Companion ready (simulated)' },
+        timestamp: Date.now()
+      });
+    }, 100);
+    // No auto-firing intervals — sim panel and keyboard are the only signal sources
+  }
+
+  close() {
+    if (!this._useMock && this._ws) this._ws.close();
+  }
+}
+
+// ── Connect ───────────────────────────────────────────────────────────────────
+const ws = new MudraWebSocket('ws://127.0.0.1:8766');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'nav_direction' }));
+  ws.send(JSON.stringify({ command: 'subscribe', signal: 'gesture' }));
+};
+
+ws.onmessage = (e) => {
+  let msg;
+  try { msg = JSON.parse(e.data); } catch { return; }
+  switch (msg.type) {
+    case 'connection_status':
+      if (msg.data.status === 'connected') {
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Mudra Band connected';
+      }
+      break;
+    case 'nav_direction': handleNavDirection(msg.data); break;
+    case 'gesture':       handleGesture(msg.data);      break;
+  }
+};
+
+ws.onclose = () => {
+  statusDot.classList.remove('connected');
+  statusText.textContent = 'Disconnected';
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderStep();
+</script>
+</body>
+</html>

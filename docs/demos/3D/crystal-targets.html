@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Crystal Targets | Mudra XR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+  <script>window.litDisableBundleWarning = true;</script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+      "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/xrblocks.js",
+      "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/addons/"
+    }
+  }
+  </script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: system-ui, -apple-system, sans-serif; color: #fff; }
+
+    #mudra-status {
+      position: fixed; top: 8px; right: 12px;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: 0.8rem; font-family: system-ui, sans-serif;
+      background: rgba(0,0,0,0.6); color: #fff; z-index: 9999;
+      border: 1px solid rgba(255,220,50,0.4);
+    }
+
+    #hud {
+      position: fixed; top: 8px; left: 12px;
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-family: 'Monaco','Menlo',monospace; font-size: 0.8rem;
+      z-index: 9999; border: 1px solid rgba(255,220,50,0.3); min-width: 150px;
+    }
+    #hud .row { display: flex; justify-content: space-between; gap: 12px; margin: 2px 0; }
+    #hud .lbl { color: #ccaa44; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    #hud .val { color: #ffee44; }
+    #hud #hud-score { font-size: 1.1rem; color: #ffe066; font-weight: bold; }
+
+    #mudra-sim {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+      padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px;
+      z-index: 9999; align-items: center;
+      border-top: 1px solid rgba(255,220,50,0.3);
+    }
+    #mudra-sim .group {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+    }
+    #mudra-sim .glabel { color: #ffee44; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 2px; }
+    #mudra-sim button {
+      background: rgba(255,220,50,0.12); color: #fff;
+      border: 1px solid rgba(255,220,50,0.4); border-radius: 4px;
+      padding: 4px 9px; font-size: 0.76rem; cursor: pointer; font-family: inherit;
+      transition: background 0.12s;
+    }
+    #mudra-sim button:hover { background: rgba(255,220,50,0.28); }
+    #mudra-sim input[type="range"] { width: 120px; accent-color: #ffee44; }
+    #mudra-sim .pval { color: #ffee44; font-size: 0.76rem; width: 26px; text-align: right; font-family: monospace; }
+    #help { color: #887744; font-size: 0.68rem; margin-left: auto; opacity: 0.85; }
+    #help kbd {
+      background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 3px;
+      font-family: monospace; color: #ffee44; border: 1px solid rgba(255,255,255,0.12);
+    }
+  </style>
+</head>
+<body>
+  <div id="mudra-status">Connecting…</div>
+
+  <div id="hud">
+    <div class="row"><span class="lbl">Score</span><span class="val" id="hud-score">0</span></div>
+    <div class="row"><span class="lbl">Target</span><span class="val" id="hud-target">1 / 8</span></div>
+    <div class="row"><span class="lbl">Charge</span><span class="val" id="hud-charge">0%</span></div>
+  </div>
+
+  <div id="mudra-sim">
+    <div class="group">
+      <span class="glabel">Dir</span>
+      <button data-d="Up">↑</button>
+      <button data-d="Down">↓</button>
+      <button data-d="Left">←</button>
+      <button data-d="Right">→</button>
+      <button data-d="Roll Left">Roll L</button>
+      <button data-d="Roll Right">Roll R</button>
+    </div>
+    <div class="group">
+      <span class="glabel">Charge</span>
+      <input id="sim-pressure" type="range" min="0" max="100" value="0" />
+      <span id="sim-pressure-val" class="pval">0</span>
+    </div>
+    <div class="group">
+      <span class="glabel">Gesture</span>
+      <button data-g="tap">Tap Fire</button>
+      <button data-g="double_tap">2Tap</button>
+      <button data-g="twist">Twist</button>
+    </div>
+    <div id="help">
+      <kbd>←</kbd><kbd>→</kbd> select &nbsp; <kbd>↑</kbd><kbd>↓</kbd> ring height &nbsp;
+      <kbd>Space</kbd> fire &nbsp; <kbd>[</kbd><kbd>]</kbd> charge
+    </div>
+  </div>
+
+  <script type="module">
+import * as THREE from 'three';
+import * as xb from 'xrblocks';
+
+// ─── MudraClient (verbatim) ──────────────────────────────────────────────────
+class MudraClient {
+  constructor(url) {
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._timers = [];
+    this._status = 'connecting';
+    this._notifyStatus('connecting');
+    const timeout = setTimeout(() => this._startMock(), 1500);
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen = () => {
+        clearTimeout(timeout);
+        this._status = 'connected';
+        this._notifyStatus('connected');
+        this._subscriptions.forEach(sig =>
+          this._ws.send(JSON.stringify({ command: 'subscribe', signal: sig }))
+        );
+      };
+      this._ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (this._handlers[msg.type]) this._handlers[msg.type](msg.data);
+      };
+      this._ws.onclose = () => {
+        clearTimeout(timeout);
+        if (this._status === 'connected') {
+          this._status = 'disconnected-simulated';
+          this._notifyStatus('disconnected-simulated');
+          this._startMock();
+        }
+      };
+      this._ws.onerror = () => { clearTimeout(timeout); this._startMock(); };
+    } catch (_) { clearTimeout(timeout); this._startMock(); }
+  }
+  on(signal, fn) { this._handlers[signal] = fn; }
+  subscribe(signal) {
+    this._subscriptions.add(signal);
+    if (this._ws && this._ws.readyState === WebSocket.OPEN)
+      this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+  }
+  send(cmd) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN)
+      this._ws.send(JSON.stringify(cmd));
+    else if (cmd.command === 'trigger_gesture')
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 0.99, timestamp: Date.now() } });
+  }
+  get status() { return this._status; }
+  _notifyStatus(s) { if (this._handlers['_status']) this._handlers['_status'](s); }
+  _emit(payload) { if (this._handlers[payload.type]) this._handlers[payload.type](payload.data); }
+  _dispatchMockGesture(type) {
+    this._emit({ type: 'gesture', data: { type, confidence: 0.99, timestamp: Date.now() } });
+  }
+  _startMock() {
+    if (this._status === 'simulated' || this._status === 'disconnected-simulated') return;
+    const wasPreviouslyConnected = this._status === 'connected';
+    this._status = wasPreviouslyConnected ? 'disconnected-simulated' : 'simulated';
+    this._notifyStatus(this._status);
+  }
+  destroy() { this._timers.forEach(t => clearInterval(t)); if (this._ws) this._ws.close(); }
+}
+
+const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+// ─── App ─────────────────────────────────────────────────────────────────────
+// signals: nav_direction (select/aim), pressure (charge), gesture (fire)
+// motion mode: Direction
+const NUM_CRYSTALS = 8;
+const CRYSTAL_COLORS = [
+  0xff4488, 0xff8844, 0xffdd44, 0x44ff88,
+  0x44ccff, 0x8844ff, 0xff44ff, 0xffaaaa
+];
+
+class MainScript extends xb.Script {
+  init() {
+    this.applyBackground_starfield();
+
+    this.add(new THREE.AmbientLight(0x222244, 2.0));
+    const key = new THREE.DirectionalLight(0xaaccff, 1.5);
+    key.position.set(3, 5, 2);
+    this.add(key);
+
+    // Crystal ring state
+    this.selectedIdx = 0;
+    this.ringHeight = xb.user.height * 0.62;
+    this.ringRadius = 0.72;
+    this.ringDepth  = -xb.user.objectDistance;
+    this.chargeLevel = 0;
+    this.score = 0;
+
+    // Build crystals
+    this.crystalMeshes = [];
+    this.crystalMats   = [];
+    this.crystalPositions = [];
+    this.crystalStates = [];  // 'alive' | 'bursting' | 'respawning'
+    this.bursts = [];
+
+    for (let i = 0; i < NUM_CRYSTALS; i++) {
+      const angle = (i / NUM_CRYSTALS) * Math.PI * 2;
+      const pos = new THREE.Vector3(
+        Math.sin(angle) * this.ringRadius,
+        this.ringHeight,
+        this.ringDepth + Math.cos(angle) * this.ringRadius * 0.35
+      );
+      this.crystalPositions.push(pos.clone());
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: CRYSTAL_COLORS[i], emissive: CRYSTAL_COLORS[i],
+        emissiveIntensity: 0.3, roughness: 0.05, metalness: 0.5,
+        transparent: true, opacity: 0.92,
+      });
+      this.crystalMats.push(mat);
+
+      const geo = new THREE.OctahedronGeometry(0.1 + Math.random() * 0.04, 0);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(pos);
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      this.add(mesh);
+      this.crystalMeshes.push(mesh);
+      this.crystalStates.push('alive');
+    }
+
+    // Selection cursor (rotating torus ring)
+    this.cursor = new THREE.Mesh(
+      new THREE.TorusGeometry(0.16, 0.014, 8, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.9 })
+    );
+    this.add(this.cursor);
+    this.updateCursor();
+
+    // Aim line from center to selected crystal
+    const aimGeo = new THREE.BufferGeometry();
+    aimGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    this.aimLine = new THREE.Line(aimGeo, new THREE.LineBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.3 }));
+    this.add(this.aimLine);
+
+    this.lastT = performance.now() / 1000;
+
+    // Mudra wiring
+    mudra.on('_status', (s) => {
+      const L = { connecting:'Connecting…', connected:'Connected', simulated:'Simulated', 'disconnected-simulated':'Disconnected — simulated' };
+      document.getElementById('mudra-status').textContent = L[s] ?? s;
+    });
+    mudra.on('nav_direction', (d) => this.handleNavDirection(d));
+    mudra.on('pressure',      (d) => this.handlePressure(d));
+    mudra.on('gesture',       (d) => this.handleGesture(d));
+    mudra.subscribe('nav_direction');
+    mudra.subscribe('pressure');
+    mudra.subscribe('gesture');
+
+    this.wireSimPanel();
+    this.wireKeyboard();
+  }
+
+  updateCursor() {
+    const pos = this.crystalPositions[this.selectedIdx];
+    this.cursor.position.copy(pos);
+    document.getElementById('hud-target').textContent = `${this.selectedIdx + 1} / ${NUM_CRYSTALS}`;
+  }
+
+  updateRingPositions() {
+    for (let i = 0; i < NUM_CRYSTALS; i++) {
+      const angle = (i / NUM_CRYSTALS) * Math.PI * 2;
+      this.crystalPositions[i].set(
+        Math.sin(angle) * this.ringRadius,
+        this.ringHeight,
+        this.ringDepth + Math.cos(angle) * this.ringRadius * 0.35
+      );
+      if (this.crystalStates[i] === 'alive') {
+        this.crystalMeshes[i].position.copy(this.crystalPositions[i]);
+      }
+    }
+    this.updateCursor();
+  }
+
+  handleNavDirection(data) {
+    switch (data.direction) {
+      case 'Left':
+        this.selectedIdx = (this.selectedIdx - 1 + NUM_CRYSTALS) % NUM_CRYSTALS;
+        this.updateCursor();
+        break;
+      case 'Right':
+        this.selectedIdx = (this.selectedIdx + 1) % NUM_CRYSTALS;
+        this.updateCursor();
+        break;
+      case 'Up':
+        this.ringHeight = Math.min(xb.user.height + 0.6, this.ringHeight + 0.12);
+        this.updateRingPositions();
+        break;
+      case 'Down':
+        this.ringHeight = Math.max(0.2, this.ringHeight - 0.12);
+        this.updateRingPositions();
+        break;
+      case 'Roll Left':
+        this.ringRadius = Math.max(0.3, this.ringRadius - 0.08);
+        this.updateRingPositions();
+        break;
+      case 'Roll Right':
+        this.ringRadius = Math.min(1.2, this.ringRadius + 0.08);
+        this.updateRingPositions();
+        break;
+    }
+  }
+
+  handlePressure(data) {
+    const n = typeof data.normalized === 'number' ? data.normalized : data.value / 100;
+    this.chargeLevel = Math.max(0, Math.min(1, n));
+    document.getElementById('hud-charge').textContent = `${Math.round(n * 100)}%`;
+    // Cursor color: yellow → white with charge
+    this.cursor.material.color.setHSL(0.14 * (1 - this.chargeLevel), 1 - this.chargeLevel * 0.7, 0.5 + this.chargeLevel * 0.45);
+    const sl = document.getElementById('sim-pressure'), vl = document.getElementById('sim-pressure-val');
+    const p = Math.round(n * 100);
+    if (sl && +sl.value !== p) sl.value = p;
+    if (vl) vl.textContent = p;
+  }
+
+  handleGesture(data) {
+    if (data.type === 'tap' || data.type === 'double_tap') {
+      this.fireShotAt(this.selectedIdx);
+    } else if (data.type === 'twist') {
+      // Fire at all alive crystals simultaneously
+      for (let i = 0; i < NUM_CRYSTALS; i++) {
+        if (this.crystalStates[i] === 'alive') this.fireShotAt(i);
+      }
+    }
+  }
+
+  fireShotAt(idx) {
+    if (this.crystalStates[idx] !== 'alive') return;
+    this.crystalStates[idx] = 'bursting';
+    this.score++;
+    document.getElementById('hud-score').textContent = this.score;
+
+    const mesh = this.crystalMeshes[idx];
+    const mat  = this.crystalMats[idx];
+    const pos  = this.crystalPositions[idx].clone();
+    const chargeScale = 1 + this.chargeLevel * 2.5;
+
+    // Pop ring
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: CRYSTAL_COLORS[idx], transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.02, 0.16, 32), ringMat);
+    ring.position.copy(pos);
+    ring.lookAt(0, pos.y, 0);
+    this.add(ring);
+
+    this.bursts.push({
+      mesh, mat, ring, ringMat, startTime: performance.now() / 1000,
+      chargeScale, initialScale: mesh.scale.x,
+    });
+
+    // Respawn after delay
+    const respawnDelay = 1200 + this.chargeLevel * 500;
+    setTimeout(() => {
+      mesh.visible = false;
+      this.crystalStates[idx] = 'respawning';
+    }, 350);
+    setTimeout(() => {
+      if (this.crystalStates[idx] === 'respawning') {
+        mesh.visible = true;
+        mesh.scale.setScalar(1);
+        mat.opacity = 0.92;
+        mat.transparent = true;
+        this.crystalStates[idx] = 'alive';
+        if (idx === this.selectedIdx) this.updateCursor();
+      }
+    }, respawnDelay);
+  }
+
+  update() {
+    const now = performance.now() / 1000;
+    let dt = now - this.lastT; this.lastT = now;
+    if (!(dt > 0) || dt > 0.1) dt = 1 / 60;
+
+    // Animate crystals: gentle float + spin
+    for (let i = 0; i < NUM_CRYSTALS; i++) {
+      if (this.crystalStates[i] !== 'alive') continue;
+      const mesh = this.crystalMeshes[i];
+      mesh.rotation.y += dt * 0.5;
+      mesh.rotation.x += dt * 0.2;
+      // Subtle hover sine
+      const hoverY = Math.sin(now * 1.1 + i * 0.85) * 0.022;
+      const base = this.crystalPositions[i];
+      mesh.position.y = base.y + hoverY;
+
+      // Emissive: selected = charge-driven, others = dim pulse
+      const isSelected = i === this.selectedIdx;
+      const pulse = 0.25 + 0.1 * Math.sin(now * 2.5 + i);
+      this.crystalMats[i].emissiveIntensity = isSelected
+        ? 0.4 + this.chargeLevel * 1.8
+        : pulse;
+    }
+
+    // Cursor animate
+    this.cursor.rotation.z += dt * 1.8;
+    const pulseS = 1 + 0.07 * Math.sin(now * 5);
+    this.cursor.scale.setScalar(pulseS);
+
+    // Aim line from viewer center to selected crystal
+    const sel = this.crystalPositions[this.selectedIdx];
+    const linePos = this.aimLine.geometry.attributes.position;
+    linePos.setXYZ(0, 0, xb.user.height * 0.6, -0.1);
+    linePos.setXYZ(1, sel.x, sel.y, sel.z);
+    linePos.needsUpdate = true;
+
+    // Burst animations
+    for (let i = this.bursts.length - 1; i >= 0; i--) {
+      const b = this.bursts[i];
+      const t = (now - b.startTime) / 0.38;
+      if (t >= 1) {
+        this.remove(b.ring);
+        this.bursts.splice(i, 1);
+        continue;
+      }
+      // Crystal: scale up + fade
+      b.mesh.scale.setScalar(b.initialScale * (1 + t * 2.5 * b.chargeScale));
+      b.mat.opacity = 0.92 * (1 - t * t);
+      // Ring: expand + fade
+      b.ring.scale.setScalar(1 + t * 4 * b.chargeScale);
+      b.ringMat.opacity = 0.9 * (1 - t);
+    }
+  }
+
+  wireSimPanel() {
+    document.querySelectorAll('#mudra-sim button[data-d]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.handleNavDirection({ direction: btn.dataset.d, timestamp: Date.now() });
+      });
+    });
+    document.querySelectorAll('#mudra-sim button[data-g]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.g;
+        mudra.send({ command: 'trigger_gesture', data: { type } });
+        this.handleGesture({ type, confidence: 1.0, timestamp: Date.now() });
+      });
+    });
+    const sl = document.getElementById('sim-pressure'), vl = document.getElementById('sim-pressure-val');
+    sl.addEventListener('input', () => {
+      const v = +sl.value; vl.textContent = v;
+      this.handlePressure({ value: v, normalized: v / 100, timestamp: Date.now() });
+    });
+  }
+
+  wireKeyboard() {
+    let kbP = 0;
+    window.addEventListener('keydown', (e) => {
+      switch (e.code) {
+        case 'ArrowLeft':  e.stopPropagation(); this.handleNavDirection({ direction: 'Left',  timestamp: Date.now() }); break;
+        case 'ArrowRight': e.stopPropagation(); this.handleNavDirection({ direction: 'Right', timestamp: Date.now() }); break;
+        case 'ArrowUp':    e.stopPropagation(); this.handleNavDirection({ direction: 'Up',    timestamp: Date.now() }); break;
+        case 'ArrowDown':  e.stopPropagation(); this.handleNavDirection({ direction: 'Down',  timestamp: Date.now() }); break;
+        case 'Space':
+          e.stopPropagation();
+          mudra.send({ command: 'trigger_gesture', data: { type: 'tap' } });
+          this.handleGesture({ type: 'tap', confidence: 1.0, timestamp: Date.now() });
+          break;
+        case 'BracketLeft':
+          e.stopPropagation();
+          kbP = Math.max(0, kbP - 10);
+          this.handlePressure({ value: kbP, normalized: kbP / 100, timestamp: Date.now() });
+          break;
+        case 'BracketRight':
+          e.stopPropagation();
+          kbP = Math.min(100, kbP + 10);
+          this.handlePressure({ value: kbP, normalized: kbP / 100, timestamp: Date.now() });
+          break;
+      }
+    }, { capture: true });
+  }
+
+  applyBackground_starfield() {
+    const starGeom = new THREE.BufferGeometry();
+    const N = 2000;
+    const positions = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const r = 40 + Math.random() * 40;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+      positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i*3+2] = r * Math.cos(phi);
+    }
+    starGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, sizeAttenuation: true });
+    this.add(new THREE.Points(starGeom, starMat));
+    const domeGeom = new THREE.SphereGeometry(90, 32, 16);
+    const domeMat = new THREE.MeshBasicMaterial({ color: 0x000008, side: THREE.BackSide });
+    this.add(new THREE.Mesh(domeGeom, domeMat));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  xb.add(new MainScript());
+  xb.init(new xb.Options());
+});
+  </script>
+</body>
+</html>

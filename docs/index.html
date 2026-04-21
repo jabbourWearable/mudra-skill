@@ -483,254 +483,168 @@
 
       <div class="demo-filters">
         <button class="active" onclick="filterDemos('all', this)">All</button>
+        <button onclick="filterDemos('2d', this)">2D Apps</button>
+        <button onclick="filterDemos('xr', this)">3D / XR</button>
         <button onclick="filterDemos('direction', this)">Direction Mode</button>
         <button onclick="filterDemos('imu', this)">IMU Mode</button>
-        <button onclick="filterDemos('pointer', this)">Pointer Mode</button>
-        <button onclick="filterDemos('pressure', this)">Pressure &amp; SNC</button>
-        <button onclick="filterDemos('multi', this)">Multi-Signal</button>
-        <button onclick="filterDemos('xr', this)">3D / XR</button>
+        <button onclick="filterDemos('pressure', this)">Pressure</button>
       </div>
 
       <div class="demo-grid" id="demoGrid">
 
-        <!-- Direction Mode -->
-        <a href="demos/2D/space-invaders.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #4ade80;">
-            &#128126;</div>
+        <!-- ── 2D Apps ── -->
+        <a href="demos/2D/breathing-guide.html" class="demo-card" data-mode="2d pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #0f4c75, #1b6ca8); color: #a8d8ea;">
+            &#129436;
+            <span class="mode-badge">2D · Pressure</span>
+          </div>
           <div class="demo-info">
-            <h4>Space Invaders</h4>
-            <p>Classic arcade shooter with directional movement and tap to fire</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>Breathing Guide</h4>
+            <p>Guided breathing exercise — tap to start a cycle, pressure controls breathing depth</p>
+            <div class="demo-tags">
+              <span class="demo-tag">gesture</span>
+              <span class="demo-tag">pressure</span>
             </div>
           </div>
         </a>
 
-        <a href="demos/2D/neural-pong.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0d1117, #1a1a2e); color: #60a5fa;">
-            &#127955;</div>
+        <a href="demos/2D/chess-clock.html" class="demo-card" data-mode="2d direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: #f0d9b5;">
+            &#9818;
+            <span class="mode-badge">2D · Direction</span>
+          </div>
           <div class="demo-info">
-            <h4>Neural Pong</h4>
-            <p>Pong game controlled by wrist directional gestures</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>Chess Clock</h4>
+            <p>Two-player chess clock — swipe to switch sides, tap to pause and control time</p>
+            <div class="demo-tags">
+              <span class="demo-tag">nav_direction</span>
+              <span class="demo-tag">gesture</span>
             </div>
           </div>
         </a>
 
-        <a href="demos/2D/neural-snake.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7;">
-            &#128013;</div>
+        <a href="demos/2D/dj-mixer.html" class="demo-card" data-mode="2d direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a0533, #3b0764); color: #e879f9;">
+            &#127908;
+            <span class="mode-badge">2D · Direction</span>
+          </div>
           <div class="demo-info">
-            <h4>Neural Snake</h4>
-            <p>Classic snake game with directional wrist control</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>DJ Mixer</h4>
+            <p>DJ mixing board — navigate tracks and effects with direction, pressure controls volume</p>
+            <div class="demo-tags">
+              <span class="demo-tag">nav_direction</span>
+              <span class="demo-tag">gesture</span>
+              <span class="demo-tag">pressure</span>
             </div>
           </div>
         </a>
 
-        <a href="demos/2D/music-sequencer.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #4c1d95, #6d28d9); color: #c4b5fd;">
-            &#127925;</div>
-          <div class="demo-info">
-            <h4>Music Sequencer</h4>
-            <p>8-step beat sequencer — navigate grid and tap to toggle beats</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
-                class="demo-tag">pressure</span></div>
+        <a href="demos/2D/morse-trainer.html" class="demo-card" data-mode="2d pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1c1c1c, #2e2e2e); color: #facc15;">
+            &#128268;
+            <span class="mode-badge">2D · Pressure</span>
           </div>
-        </a>
-
-        <a href="demos/2D/presentation-controller.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1e3a5f, #2563eb); color: #bfdbfe;">
-            &#128218;</div>
           <div class="demo-info">
-            <h4>Presentation Controller</h4>
-            <p>Slide deck remote — swipe to navigate, tap for laser pointer</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>Morse Trainer</h4>
+            <p>Learn Morse code — tap for dots, hold pressure for dashes, practice in real-time</p>
+            <div class="demo-tags">
+              <span class="demo-tag">gesture</span>
+              <span class="demo-tag">pressure</span>
             </div>
           </div>
         </a>
 
-        <a href="demos/2D/smart-home.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #16a34a;">
-            &#127968;</div>
-          <div class="demo-info">
-            <h4>Smart Home</h4>
-            <p>Navigate rooms and toggle devices hands-free</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
-                class="demo-tag">pressure</span></div>
+        <a href="demos/2D/recipe-step-controller.html" class="demo-card" data-mode="2d direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a3a1a, #2d5a2d); color: #86efac;">
+            &#127859;
+            <span class="mode-badge">2D · Direction</span>
           </div>
-        </a>
-
-        <a href="demos/2Dar-menu.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0c4a6e, #0284c7); color: #7dd3fc;">
-            &#128083;</div>
           <div class="demo-info">
-            <h4>AR Menu</h4>
-            <p>Augmented reality-style interface with directional navigation</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>Recipe Step Controller</h4>
+            <p>Hands-free recipe reader — swipe to step through instructions, tap to mark done</p>
+            <div class="demo-tags">
+              <span class="demo-tag">nav_direction</span>
+              <span class="demo-tag">gesture</span>
             </div>
           </div>
         </a>
 
-        <a href="demos/2D/document-scroller.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fefce8, #fef9c3); color: #a16207;">
-            &#128196;</div>
-          <div class="demo-info">
-            <h4>Document Scroller</h4>
-            <p>Gesture-based document reader with swipe navigation</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span><span
-                class="demo-tag">pressure</span></div>
+        <!-- ── 3D / XR Apps ── -->
+        <a href="demos/3D/gravity-bowl.html" class="demo-card" data-mode="xr imu">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #050014, #0a0030); color: #00ffcc;">
+            &#9899;
+            <span class="mode-badge">3D · IMU</span>
           </div>
-        </a>
-
-        <a href="demos/2D/gesture-speech.html" class="demo-card" data-mode="direction">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fdf4ff, #f5d0fe); color: #a21caf;">
-            &#128172;</div>
           <div class="demo-info">
-            <h4>Gesture Speech</h4>
-            <p>Speech assistance — trigger phrases with gestures</p>
-            <div class="demo-tags"><span class="demo-tag">nav_direction</span><span class="demo-tag">gesture</span>
+            <h4>Gravity Bowl</h4>
+            <p>Tilt your wrist to roll glowing metallic balls in a wireframe bowl — pressure pulls them to center</p>
+            <div class="demo-tags">
+              <span class="demo-tag">imu_acc</span>
+              <span class="demo-tag">pressure</span>
+              <span class="demo-tag">gesture</span>
             </div>
           </div>
         </a>
 
-        <!-- IMU Mode -->
-        <a href="demos/2D/generative-art.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview"
-            style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444); color: #fff;">&#127912;</div>
+        <a href="demos/3D/crystal-targets.html" class="demo-card" data-mode="xr direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #000008, #080820); color: #ffee44;">
+            &#128142;
+            <span class="mode-badge">3D · Direction</span>
+          </div>
           <div class="demo-info">
-            <h4>Generative Art</h4>
-            <p>Tilt your wrist to create flowing generative art</p>
-            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span
-                class="demo-tag">gesture</span></div>
+            <h4>Crystal Targets</h4>
+            <p>Select floating crystals with directional swipes, charge your shot with pressure, tap to fire</p>
+            <div class="demo-tags">
+              <span class="demo-tag">nav_direction</span>
+              <span class="demo-tag">pressure</span>
+              <span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/2D/model-rotator.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #1e293b, #334155); color: #94a3b8;">
-            &#128190;</div>
+        <a href="demos/3D/bubble-garden.html" class="demo-card" data-mode="xr pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a4a8a, #ff7b3a); color: #fff;">
+            &#129749;
+            <span class="mode-badge">3D · Pressure</span>
+          </div>
           <div class="demo-info">
-            <h4>3D Model Rotator</h4>
-            <p>Rotate 3D objects by tilting your wrist</p>
-            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span></div>
+            <h4>Bubble Garden</h4>
+            <p>Grow iridescent bubbles with pressure, twist to release them, tap to pop</p>
+            <div class="demo-tags">
+              <span class="demo-tag">pressure</span>
+              <span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
-        <a href="demos/2D/mudra-duel.html" class="demo-card" data-mode="imu">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #7f1d1d, #b91c1c); color: #fca5a5;">
-            &#9876;</div>
+        <a href="demos/3D/cyberpunk-drone-dashboard.html" class="demo-card" data-mode="xr pressure">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #0a0010, #1a0030); color: #ff00ff;">
+            &#128641;
+            <span class="mode-badge">3D · Pressure</span>
+          </div>
           <div class="demo-info">
-            <h4>Mudra Duel</h4>
-            <p>1v1 gesture battle game with tilt and motion</p>
-            <div class="demo-tags"><span class="demo-tag">imu_acc</span><span class="demo-tag">imu_gyro</span><span
-                class="demo-tag">gesture</span></div>
+            <h4>Cyberpunk Drone Dashboard</h4>
+            <p>Neon HUD in 3D space — tap to fire energy bolts, pressure for throttle and glow intensity</p>
+            <div class="demo-tags">
+              <span class="demo-tag">gesture</span>
+              <span class="demo-tag">pressure</span>
+            </div>
           </div>
         </a>
 
-        <!-- Pointer Mode -->
-        <a href="demos/2D/hands-free-desktop.html" class="demo-card" data-mode="pointer">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb;">
-            &#128421;</div>
-          <div class="demo-info">
-            <h4>Hands-Free Desktop</h4>
-            <p>Control a virtual desktop with pointer navigation and air click</p>
-            <div class="demo-tags"><span class="demo-tag">navigation</span><span class="demo-tag">button</span><span
-                class="demo-tag">gesture</span></div>
+        <a href="demos/3D/mudra-car.html" class="demo-card" data-mode="xr direction">
+          <div class="demo-preview" style="background: linear-gradient(135deg, #1a1a22, #2a2a32); color: #ffcc66;">
+            &#127950;
+            <span class="mode-badge">3D · Direction</span>
           </div>
-        </a>
-
-        <!-- Pressure & SNC -->
-        <a href="demos/2D/pressure-painter.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #ea580c;">
-            &#127912;</div>
           <div class="demo-info">
-            <h4>Pressure Painter</h4>
-            <p>Pressure-sensitive painting canvas with gesture color switching</p>
-            <div class="demo-tags"><span class="demo-tag">pressure</span><span class="demo-tag">gesture</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2D/emg-visualizer.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #022c22, #064e3b); color: #34d399;">
-            &#128200;</div>
-          <div class="demo-info">
-            <h4>EMG Visualizer</h4>
-            <p>Real-time SNC/EMG biofeedback — 3 channel waveform display</p>
-            <div class="demo-tags"><span class="demo-tag">snc</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2D/gesture-assistant.html" class="demo-card" data-mode="pressure">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #faf5ff, #e9d5ff); color: #7c3aed;">
-            &#129302;</div>
-          <div class="demo-info">
-            <h4>Gesture Assistant</h4>
-            <p>Gesture recognition helper with visual feedback</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span></div>
-          </div>
-        </a>
-
-        <!-- Multi-Signal -->
-        <a href="demos/2D/drum-machine.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #451a03, #78350f); color: #fbbf24;">
-            &#129345;</div>
-          <div class="demo-info">
-            <h4>Drum Machine</h4>
-            <p>Trigger drum hits with gestures, control volume with pressure</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2D/runner.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #ecfdf5, #a7f3d0); color: #059669;">
-            &#127939;</div>
-          <div class="demo-info">
-            <h4>Runner</h4>
-            <p>Side-scrolling runner — gesture to jump, pressure to sprint</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
-                class="demo-tag">nav_direction</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2D/waterful-ring-toss.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1;">
-            &#128171;</div>
-          <div class="demo-info">
-            <h4>Waterful Ring Toss</h4>
-            <p>Classic water ring toss arcade game</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
-                class="demo-tag">nav_direction</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2Dmudra-monitor.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #38bdf8;">
-            &#128225;</div>
-          <div class="demo-info">
-            <h4>Mudra Monitor</h4>
-            <p>Full device telemetry dashboard — all 9 signal types</p>
-            <div class="demo-tags"><span class="demo-tag">all signals</span></div>
-          </div>
-        </a>
-
-        <a href="demos/2D/mudra-ultimate-template.html" class="demo-card" data-mode="multi">
-          <div class="demo-preview"
-            style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;">&#128736;</div>
-          <div class="demo-info">
-            <h4>Starter Template</h4>
-            <p>Baseline template with all signal handlers — fork this for custom apps</p>
-            <div class="demo-tags"><span class="demo-tag">template</span><span class="demo-tag">all signals</span></div>
-          </div>
-        </a>
-
-        <!-- 3D / XR Apps -->
-        <a href="demos/3D/xr-pinch-cube.html" class="demo-card" data-mode="xr">
-          <div class="demo-preview"
-            style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); color: #44aaff;">&#127908;</div>
-          <div class="demo-info">
-            <h4>XR Pinch Cube</h4>
-            <p>3D cube floats in WebXR — pinch to rotate, pressure to scale and recolor</p>
-            <div class="demo-tags"><span class="demo-tag">gesture</span><span class="demo-tag">pressure</span><span
-                class="demo-tag">XR</span></div>
+            <h4>Mudra Car</h4>
+            <p>Drive a low-poly 3D car — directional gestures to steer, pressure sets throttle cap</p>
+            <div class="demo-tags">
+              <span class="demo-tag">nav_direction</span>
+              <span class="demo-tag">pressure</span>
+              <span class="demo-tag">gesture</span>
+            </div>
           </div>
         </a>
 
@@ -791,11 +705,8 @@
       document.querySelectorAll('.demo-filters button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.querySelectorAll('.demo-card').forEach(card => {
-        if (mode === 'all' || card.dataset.mode === mode) {
-          card.style.display = '';
-        } else {
-          card.style.display = 'none';
-        }
+        const modes = (card.dataset.mode || '').split(' ');
+        card.style.display = (mode === 'all' || modes.includes(mode)) ? '' : 'none';
       });
     }
   </script>

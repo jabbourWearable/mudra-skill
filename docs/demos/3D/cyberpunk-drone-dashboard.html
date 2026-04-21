@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cyberpunk Drone Dashboard | Mudra XR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.11.0/build/addons/"
+        }
+      }
+    </script>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: system-ui, -apple-system, sans-serif; color: #fff; }
+
+      #mudra-status {
+        position: fixed; top: 8px; right: 12px;
+        padding: 4px 10px; border-radius: 999px;
+        font-size: 0.8rem; font-family: system-ui, sans-serif;
+        background: rgba(0,0,0,0.6); color: #fff;
+        z-index: 9999;
+        border: 1px solid rgba(255,0,255,0.45);
+        box-shadow: 0 0 12px rgba(255,0,255,0.25);
+      }
+
+      #mudra-sim {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.78); backdrop-filter: blur(6px);
+        padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px;
+        z-index: 9999; font-family: system-ui, sans-serif;
+        align-items: center;
+        border-top: 1px solid rgba(0,255,255,0.4);
+      }
+      #mudra-sim .group {
+        display: flex; align-items: center; gap: 6px;
+        padding: 4px 10px;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 6px;
+      }
+      #mudra-sim .label {
+        color: #9af; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+        margin-right: 2px;
+      }
+      #mudra-sim button {
+        background: rgba(255,0,255,0.15);
+        color: #fff;
+        border: 1px solid rgba(255,0,255,0.5);
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      #mudra-sim button:hover {
+        background: rgba(0,255,255,0.22);
+        border-color: rgba(0,255,255,0.6);
+      }
+      #mudra-sim input[type="range"] {
+        width: 140px;
+        accent-color: #ff00ff;
+      }
+      #mudra-sim .press-value {
+        color: #0ff; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.78rem; width: 28px; text-align: right;
+      }
+      #help {
+        color: #88f; font-size: 0.7rem; margin-left: auto; opacity: 0.75;
+      }
+      #help kbd {
+        background: rgba(255,255,255,0.08);
+        padding: 1px 6px; border-radius: 3px;
+        font-family: 'Monaco', 'Menlo', monospace; color: #cff;
+        border: 1px solid rgba(255,255,255,0.15);
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="mudra-status">Connecting…</div>
+
+    <div id="mudra-sim">
+      <div class="group">
+        <span class="label">Gesture</span>
+        <button data-g="tap">Tap</button>
+        <button data-g="double_tap">2Tap</button>
+        <button data-g="twist">Twist</button>
+        <button data-g="double_twist">2Twist</button>
+      </div>
+      <div class="group">
+        <span class="label">Pressure</span>
+        <input id="sim-pressure" type="range" min="0" max="100" value="0" />
+        <span id="sim-pressure-val" class="press-value">0</span>
+      </div>
+      <div id="help">
+        <kbd>Space</kbd> fire &nbsp; <kbd>[</kbd>/<kbd>]</kbd> throttle
+      </div>
+    </div>
+
+    <script type="module">
+import * as THREE from 'three';
+import * as xb from 'xrblocks';
+
+// ────────────────────────────────────────────────────────────────────────
+//  MudraClient — verbatim from skill rules (1500 ms timeout, passive mock)
+// ────────────────────────────────────────────────────────────────────────
+class MudraClient {
+  constructor(url) {
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._timers = [];
+    this._status = 'connecting';
+    this._notifyStatus('connecting');
+
+    const timeout = setTimeout(() => this._startMock(), 1500);
+
+    try {
+      this._ws = new WebSocket(url);
+      this._ws.onopen = () => {
+        clearTimeout(timeout);
+        this._status = 'connected';
+        this._notifyStatus('connected');
+        this._subscriptions.forEach(sig =>
+          this._ws.send(JSON.stringify({ command: 'subscribe', signal: sig }))
+        );
+      };
+      this._ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (this._handlers[msg.type]) this._handlers[msg.type](msg.data);
+      };
+      this._ws.onclose = () => {
+        clearTimeout(timeout);
+        if (this._status === 'connected') {
+          this._status = 'disconnected-simulated';
+          this._notifyStatus('disconnected-simulated');
+          this._startMock();
+        }
+      };
+      this._ws.onerror = () => {
+        clearTimeout(timeout);
+        this._startMock();
+      };
+    } catch (_) {
+      clearTimeout(timeout);
+      this._startMock();
+    }
+  }
+
+  on(signal, fn) { this._handlers[signal] = fn; }
+
+  subscribe(signal) {
+    this._subscriptions.add(signal);
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+    }
+  }
+
+  send(cmd) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify(cmd));
+    } else if (cmd.command === 'trigger_gesture') {
+      this._dispatchMockGesture(cmd.data.type);
+    }
+  }
+
+  get status() { return this._status; }
+
+  _notifyStatus(s) {
+    if (this._handlers['_status']) this._handlers['_status'](s);
+  }
+
+  _emit(payload) {
+    if (this._handlers[payload.type]) this._handlers[payload.type](payload.data);
+  }
+
+  _dispatchMockGesture(type) {
+    this._emit({ type: 'gesture', data: { type, confidence: 0.99, timestamp: Date.now() } });
+  }
+
+  _startMock() {
+    if (this._status === 'simulated' || this._status === 'disconnected-simulated') return;
+    const wasPreviouslyConnected = this._status === 'connected';
+    this._status = wasPreviouslyConnected ? 'disconnected-simulated' : 'simulated';
+    this._notifyStatus(this._status);
+    // Passive mock: sim panel + keyboard are the only signal sources.
+  }
+
+  destroy() {
+    this._timers.forEach(t => clearInterval(t));
+    if (this._ws) this._ws.close();
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+//  Module-scope MudraClient (opens immediately; 1500 ms → mock fallback)
+// ────────────────────────────────────────────────────────────────────────
+const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+// ────────────────────────────────────────────────────────────────────────
+//  Cyberpunk Drone Dashboard
+//  signals: gesture (tap → fire bolt), pressure (throttle + neon grip pulse)
+//  motion mode: none
+// ────────────────────────────────────────────────────────────────────────
+class MainScript extends xb.Script {
+  init() {
+    this.applyBackground_grid_cyber();
+
+    // Ambient + accent lighting — cyan key, magenta rim
+    this.add(new THREE.HemisphereLight(0xff44ff, 0x002244, 0.7));
+    const keyLight = new THREE.PointLight(0x00ffff, 2.2, 12);
+    keyLight.position.set(-1.5, xb.user.height + 1.0, -0.5);
+    this.add(keyLight);
+    const rimLight = new THREE.PointLight(0xff00ff, 2.2, 12);
+    rimLight.position.set(1.5, xb.user.height + 0.5, -2.0);
+    this.add(rimLight);
+
+    // Internal state
+    this.throttle = 0;
+    this.throttleTarget = 0;
+    this.bolts = [];
+    this.pulsePhase = 0;
+    this.lastT = performance.now() / 1000;
+
+    const forwardZ = -xb.user.objectDistance;
+    const baseY = xb.user.height - 0.2;
+    this.baseY = baseY;
+
+    // ── Drone rig ────────────────────────────────────────────────────
+    this.drone = new THREE.Group();
+    this.drone.position.set(0, baseY, forwardZ);
+    this.add(this.drone);
+
+    const neon = new THREE.Color(0xff00ff);
+
+    // Central body
+    this.bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x202030, metalness: 0.75, roughness: 0.3,
+      emissive: neon.clone(), emissiveIntensity: 0.35,
+    });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.28), this.bodyMat);
+    this.drone.add(body);
+
+    // Cockpit bubble (cyan, pulses)
+    this.domeMat = new THREE.MeshStandardMaterial({
+      color: 0x00ffff, metalness: 0.8, roughness: 0.1,
+      emissive: 0x00ffff, emissiveIntensity: 0.6,
+      transparent: true, opacity: 0.72,
+    });
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      this.domeMat
+    );
+    dome.position.y = 0.03;
+    this.drone.add(dome);
+
+    // Cannon nozzle on the front underside
+    this.nozzleMat = new THREE.MeshStandardMaterial({
+      color: 0x111122, metalness: 0.9, roughness: 0.2,
+      emissive: neon.clone(), emissiveIntensity: 0.45,
+    });
+    const nozzle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.05, 0.25, 14),
+      this.nozzleMat
+    );
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.set(0, -0.04, -0.2);
+    this.drone.add(nozzle);
+
+    // Muzzle flash orb (flashes each shot)
+    this.muzzleMat = new THREE.MeshBasicMaterial({ color: 0xff66ff, transparent: true, opacity: 0.0 });
+    this.muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), this.muzzleMat);
+    this.muzzle.position.set(0, -0.04, -0.33);
+    this.drone.add(this.muzzle);
+
+    // Four arms + rotors (diagonal layout)
+    this.armMats = [];
+    this.rotors = [];
+    const corners = [
+      new THREE.Vector3( 0.22, 0,  0.22),
+      new THREE.Vector3(-0.22, 0,  0.22),
+      new THREE.Vector3( 0.22, 0, -0.22),
+      new THREE.Vector3(-0.22, 0, -0.22),
+    ];
+    for (const corner of corners) {
+      const len = corner.length();
+      const armMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1a28, metalness: 0.8, roughness: 0.4,
+        emissive: neon.clone(), emissiveIntensity: 0.3,
+      });
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.028, len), armMat);
+      arm.position.copy(corner).multiplyScalar(0.5);
+      arm.rotation.set(0, Math.atan2(corner.x, corner.z), 0);
+      this.armMats.push(armMat);
+      this.drone.add(arm);
+
+      // Rotor hub
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.032, 0.032, 0.028, 14),
+        new THREE.MeshStandardMaterial({
+          color: 0x111122, metalness: 0.9, roughness: 0.2,
+          emissive: 0x00ffff, emissiveIntensity: 0.65,
+        })
+      );
+      hub.position.set(corner.x, 0.022, corner.z);
+      this.drone.add(hub);
+
+      // Spinning blade disc — opacity scales with throttle for "prop wash"
+      const bladeMat = new THREE.MeshBasicMaterial({
+        color: 0x00ffff, transparent: true, opacity: 0.12,
+        side: THREE.DoubleSide,
+      });
+      const blade = new THREE.Mesh(new THREE.RingGeometry(0.04, 0.15, 28, 1), bladeMat);
+      blade.rotation.x = -Math.PI / 2;
+      blade.position.set(corner.x, 0.042, corner.z);
+      this.drone.add(blade);
+      this.rotors.push({ blade, bladeMat });
+    }
+
+    // ── HUD: throttle gauge (spatial, on the left) ──────────────────
+    this.buildThrottleGauge(-0.55, baseY, forwardZ + 0.05);
+
+    // ── HUD: grip ring beneath the drone ────────────────────────────
+    this.buildGripRing(baseY - 0.32, forwardZ);
+
+    // ── HUD: target reticle far ahead ───────────────────────────────
+    this.buildReticle(baseY, forwardZ - 2.2);
+
+    // ── Mudra wiring ────────────────────────────────────────────────
+    mudra.on('_status', (s) => {
+      const chip = document.getElementById('mudra-status');
+      const labels = {
+        'connecting': 'Connecting…',
+        'connected': 'Connected',
+        'simulated': 'Simulated',
+        'disconnected-simulated': 'Disconnected — simulated',
+      };
+      chip.textContent = labels[s] ?? s;
+    });
+
+    mudra.on('gesture',  (data) => this.handleGesture(data));
+    mudra.on('pressure', (data) => this.handlePressure(data));
+
+    mudra.subscribe('gesture');
+    mudra.subscribe('pressure');
+
+    this.wireSimPanel();
+    this.wireKeyboard();
+  }
+
+  // ── HUD builders ──────────────────────────────────────────────────
+
+  buildThrottleGauge(x, y, z) {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+    // Face the viewer (camera ~ (0, user.height, 0))
+    group.rotation.y = Math.atan2(-x, -z);
+    this.add(group);
+
+    const frameMat = new THREE.MeshBasicMaterial({ color: 0x0a0a18, transparent: true, opacity: 0.88 });
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.5), frameMat);
+    group.add(frame);
+
+    // Neon magenta border
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(0.14, 0.5)),
+      new THREE.LineBasicMaterial({ color: 0xff00ff })
+    );
+    group.add(border);
+
+    // Fill bar (grows upward from bottom)
+    this.throttleFillMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff, transparent: true, opacity: 0.85,
+    });
+    this.throttleFill = new THREE.Mesh(new THREE.PlaneGeometry(0.10, 0.46), this.throttleFillMat);
+    this.throttleFill.position.set(0, -0.23, 0.001);
+    this.throttleFill.scale.y = 0.001;
+    group.add(this.throttleFill);
+
+    // Tick marks
+    const tickMat = new THREE.LineBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.55 });
+    for (let i = 0; i <= 4; i++) {
+      const ty = -0.23 + (i / 4) * 0.46;
+      const g = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-0.075, ty, 0.002),
+        new THREE.Vector3(-0.052, ty, 0.002),
+      ]);
+      group.add(new THREE.Line(g, tickMat));
+    }
+
+    // "THR" label strip at the top (a small emissive bar)
+    const labelBar = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.10, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.9 })
+    );
+    labelBar.position.set(0, 0.26, 0.002);
+    group.add(labelBar);
+  }
+
+  buildGripRing(y, z) {
+    this.gripRingMat = new THREE.MeshBasicMaterial({
+      color: 0xff00ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide,
+    });
+    this.gripRing = new THREE.Mesh(new THREE.RingGeometry(0.38, 0.44, 72), this.gripRingMat);
+    this.gripRing.position.set(0, y, z);
+    this.gripRing.rotation.x = -Math.PI / 2;
+    this.add(this.gripRing);
+
+    // Outer halo ring, cyan
+    this.gripHaloMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff, transparent: true, opacity: 0.12, side: THREE.DoubleSide,
+    });
+    this.gripHalo = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.52, 72), this.gripHaloMat);
+    this.gripHalo.position.set(0, y + 0.001, z);
+    this.gripHalo.rotation.x = -Math.PI / 2;
+    this.add(this.gripHalo);
+  }
+
+  buildReticle(y, z) {
+    const outerMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide,
+    });
+    const outer = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.15, 48), outerMat);
+    outer.position.set(0, y, z);
+    this.add(outer);
+
+    const chMat = new THREE.LineBasicMaterial({ color: 0xff00ff });
+    const addLine = (ax, ay, bx, by) => {
+      const g = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(ax, ay, 0),
+        new THREE.Vector3(bx, by, 0),
+      ]);
+      const l = new THREE.Line(g, chMat);
+      l.position.set(0, y, z);
+      this.add(l);
+    };
+    addLine(-0.08, 0,   -0.045, 0);
+    addLine( 0.045, 0,   0.08, 0);
+    addLine(0, -0.08,   0, -0.045);
+    addLine(0,  0.045,  0,  0.08);
+
+    // Center dot
+    const dot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.007, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff00ff })
+    );
+    dot.position.set(0, y, z + 0.001);
+    this.add(dot);
+  }
+
+  // ── Signal handlers ───────────────────────────────────────────────
+
+  handleGesture(data) {
+    if (data.type === 'tap') {
+      this.fireBolt();
+    } else if (data.type === 'double_tap') {
+      this.fireBolt();
+      setTimeout(() => this.fireBolt(), 90);
+    } else if (data.type === 'twist') {
+      this.drone.rotation.y += 0.35;
+    } else if (data.type === 'double_twist') {
+      this.drone.rotation.y -= 0.7;
+    }
+  }
+
+  handlePressure(data) {
+    const norm = Math.max(0, Math.min(1,
+      (typeof data.normalized === 'number') ? data.normalized : (data.value / 100)
+    ));
+    this.throttleTarget = norm;
+
+    const slider = document.getElementById('sim-pressure');
+    const valEl = document.getElementById('sim-pressure-val');
+    const pct = Math.round(norm * 100);
+    if (slider && +slider.value !== pct) slider.value = pct;
+    if (valEl) valEl.textContent = pct;
+  }
+
+  fireBolt() {
+    const color = new THREE.Color().setHSL(0.82 - this.throttle * 0.35, 1.0, 0.6);
+    const boltMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1.0 });
+    const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 10), boltMat);
+
+    const tip = new THREE.Vector3();
+    this.muzzle.getWorldPosition(tip);
+    bolt.position.copy(tip);
+
+    // Forward = current drone forward in world space
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.drone.getWorldQuaternion(new THREE.Quaternion()));
+    const speed = 5 + this.throttle * 12;
+    bolt.userData.vel  = fwd.multiplyScalar(speed);
+    bolt.userData.life = 1.2;
+
+    // Soft halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 12, 8),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 })
+    );
+    bolt.add(halo);
+    bolt.userData.halo = halo;
+
+    this.add(bolt);
+    this.bolts.push(bolt);
+
+    // Muzzle flash
+    this.muzzleMat.opacity = 1.0;
+  }
+
+  // ── Per-frame update ──────────────────────────────────────────────
+
+  update() {
+    const now = performance.now() / 1000;
+    let dt = now - this.lastT;
+    this.lastT = now;
+    if (!(dt > 0) || dt > 0.1) dt = 1 / 60;
+
+    // Ease throttle
+    this.throttle += (this.throttleTarget - this.throttle) * Math.min(1, dt * 8);
+
+    // Throttle gauge fill
+    if (this.throttleFill) {
+      const t = Math.max(0.001, this.throttle);
+      this.throttleFill.scale.y = t;
+      this.throttleFill.position.y = -0.23 + (t * 0.46) / 2;
+      const hue = 0.55 - this.throttle * 0.45; // cyan → magenta as it climbs
+      this.throttleFillMat.color.setHSL(hue, 1.0, 0.55);
+    }
+
+    // Neon pulse — faster and hotter as grip tightens
+    this.pulsePhase += dt * (2 + this.throttle * 12);
+    const pulse = 0.5 + 0.5 * Math.sin(this.pulsePhase);
+    const neonHue = 0.82 - this.throttle * 0.35;
+    const neonColor = new THREE.Color().setHSL(neonHue, 1.0, 0.55);
+    const neonIntensity = 0.3 + this.throttle * 1.6 + pulse * (0.15 + this.throttle * 0.6);
+
+    this.bodyMat.emissive.copy(neonColor);
+    this.bodyMat.emissiveIntensity = neonIntensity * 0.6;
+
+    this.nozzleMat.emissive.copy(neonColor);
+    this.nozzleMat.emissiveIntensity = neonIntensity;
+
+    for (const m of this.armMats) {
+      m.emissive.copy(neonColor);
+      m.emissiveIntensity = neonIntensity * 0.55;
+    }
+
+    // Dome stays cyan but intensity tracks pulse
+    this.domeMat.emissiveIntensity = 0.45 + pulse * 0.7;
+
+    // Grip ring: color + opacity + scale pulse
+    if (this.gripRingMat && this.gripRing) {
+      this.gripRingMat.color.copy(neonColor);
+      this.gripRingMat.opacity = 0.18 + this.throttle * 0.55 + pulse * 0.2;
+      const s = 1 + this.throttle * 0.15 + pulse * 0.05;
+      this.gripRing.scale.setScalar(s);
+    }
+    if (this.gripHaloMat && this.gripHalo) {
+      this.gripHaloMat.opacity = 0.08 + this.throttle * 0.35 + pulse * 0.08;
+      this.gripHalo.scale.setScalar(1 + this.throttle * 0.2 + pulse * 0.04);
+    }
+
+    // Rotor spin + prop-wash opacity
+    for (const r of this.rotors) {
+      r.blade.rotation.z += dt * (3 + this.throttle * 70);
+      r.bladeMat.opacity = 0.1 + this.throttle * 0.4;
+    }
+
+    // Drone hover bob + slow yaw under throttle
+    const bob = Math.sin(now * 2.2) * (0.01 + this.throttle * 0.06);
+    this.drone.position.y = this.baseY + bob;
+    this.drone.rotation.y += dt * this.throttle * 0.3;
+
+    // Muzzle flash decay
+    if (this.muzzleMat.opacity > 0) {
+      this.muzzleMat.opacity = Math.max(0, this.muzzleMat.opacity - dt * 6);
+    }
+
+    // Update + cull bolts
+    for (let i = this.bolts.length - 1; i >= 0; i--) {
+      const b = this.bolts[i];
+      b.position.addScaledVector(b.userData.vel, dt);
+      b.userData.life -= dt;
+      const lifeFrac = Math.max(0, b.userData.life / 1.2);
+      b.material.opacity = lifeFrac;
+      if (b.userData.halo) b.userData.halo.material.opacity = lifeFrac * 0.35;
+      if (b.userData.life <= 0) {
+        this.remove(b);
+        b.geometry.dispose();
+        b.material.dispose();
+        if (b.userData.halo) {
+          b.userData.halo.geometry.dispose();
+          b.userData.halo.material.dispose();
+        }
+        this.bolts.splice(i, 1);
+      }
+    }
+  }
+
+  // XR pinch → fire (same code path as tap)
+  onSelectStart() {
+    this.fireBolt();
+  }
+
+  // ── Sim panel + keyboard wiring ───────────────────────────────────
+
+  wireSimPanel() {
+    const self = this;
+    document.querySelectorAll('#mudra-sim button[data-g]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.g;
+        mudra.send({ command: 'trigger_gesture', data: { type } });
+        self.handleGesture({ type, confidence: 1.0, timestamp: Date.now() });
+      });
+    });
+
+    const slider = document.getElementById('sim-pressure');
+    const valEl = document.getElementById('sim-pressure-val');
+    slider.addEventListener('input', () => {
+      const v = +slider.value;
+      valEl.textContent = v;
+      self.handlePressure({ value: v, normalized: v / 100, timestamp: Date.now() });
+    });
+  }
+
+  wireKeyboard() {
+    const self = this;
+    let kbPressure = 0;
+    const setPressure = (v) => {
+      kbPressure = Math.max(0, Math.min(100, v));
+      self.handlePressure({ value: kbPressure, normalized: kbPressure / 100, timestamp: Date.now() });
+    };
+
+    window.addEventListener('keydown', (e) => {
+      switch (e.code) {
+        case 'Space':
+          e.stopPropagation();
+          mudra.send({ command: 'trigger_gesture', data: { type: 'tap' } });
+          self.handleGesture({ type: 'tap', confidence: 1.0, timestamp: Date.now() });
+          break;
+        case 'BracketLeft':
+          e.stopPropagation();
+          setPressure(kbPressure - 10);
+          break;
+        case 'BracketRight':
+          e.stopPropagation();
+          setPressure(kbPressure + 10);
+          break;
+      }
+    }, { capture: true });
+  }
+
+  // ── Background helper (copied verbatim from Section 14 catalog) ────
+  applyBackground_grid_cyber() {
+    // Very dark dome
+    const domeGeom = new THREE.SphereGeometry(80, 32, 16);
+    const domeMat = new THREE.MeshBasicMaterial({ color: 0x050014, side: THREE.BackSide });
+    this.add(new THREE.Mesh(domeGeom, domeMat));
+
+    // Neon magenta/cyan grid on the floor
+    const grid = new THREE.GridHelper(40, 40, 0xff00ff, 0x00ffff);
+    grid.position.y = 0;
+    this.add(grid);
+
+    // Horizon line for added depth
+    const horizonGeom = new THREE.RingGeometry(19.8, 20, 64);
+    const horizonMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const horizon = new THREE.Mesh(horizonGeom, horizonMat);
+    horizon.rotation.x = -Math.PI / 2;
+    horizon.position.y = 0.01;
+    this.add(horizon);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  xb.add(new MainScript());
+  xb.init(new xb.Options());
+});
+    </script>
+  </body>
+</html>
