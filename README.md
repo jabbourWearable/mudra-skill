@@ -22,7 +22,8 @@ This repository contains two AI skills that turn natural language descriptions i
 
 | Skill | Platform | How to use |
 |---|---|---|
-| **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill |
+| **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps |
+| **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps |
 | **Mudra Studio Gem** | [Gemini](https://gemini.google.com/) | Gemini Gem (custom prompt) |
 
 ---
@@ -31,7 +32,8 @@ This repository contains two AI skills that turn natural language descriptions i
 
 - [What is Mudra Band?](#what-is-mudra-band)
 - [Live Demos](#live-demos)
-- [Quick Start — Claude Code Skill](#quick-start--claude-code-skill)
+- [Quick Start — Claude Code Skill (2D)](#quick-start--claude-code-skill)
+- [Quick Start — Mudra 3D/XR Skill](#quick-start--mudra-3dxr-skill)
 - [Quick Start — Gemini Gem](#quick-start--gemini-gem)
 - [Supported Signals](#supported-signals)
 - [Motion Modes](#motion-modes)
@@ -57,14 +59,14 @@ Try these apps directly in your browser — no Mudra Band required (use the buil
 
 | App | Signals | Live Link |
 |---|---|---|
-| Drum Machine | gesture + pressure | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/drum-machine.html) |
-| Space Invaders | nav_direction + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/space-invaders.html) |
-| Neural Pong | nav_direction + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/neural-pong.html) |
-| Pressure Painter | pressure + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/pressure-painter.html) |
-| Generative Art | imu_acc + imu_gyro | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/generative-art.html) |
-| Smart Home | nav_direction + gesture + pressure | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/smart-home.html) |
-| EMG Visualizer | snc | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/emg-visualizer.html) |
-| Mudra Monitor | all signals | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/mudra-monitor.html) |
+| Drum Machine | gesture + pressure | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/drum-machine.html) |
+| Space Invaders | nav_direction + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/space-invaders.html) |
+| Neural Pong | nav_direction + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/neural-pong.html) |
+| Pressure Painter | pressure + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/pressure-painter.html) |
+| Generative Art | imu_acc + imu_gyro | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/generative-art.html) |
+| Smart Home | nav_direction + gesture + pressure | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/smart-home.html) |
+| EMG Visualizer | snc | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/emg-visualizer.html) |
+| Mudra Monitor | all signals | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/2D/mudra-monitor.html) |
 
 > **Note:** All demos include a mock WebSocket fallback — they work fully in any browser without the band connected.
 
@@ -136,6 +138,57 @@ Open it in your browser to test with the simulator panel.
 ![Presentation Controller](docs/assets/images/presentation-controller-screenshot.svg)
 
 *Every generated app includes a compact simulator strip (shown at top) for testing without the band.*
+
+---
+
+## Quick Start — Mudra 3D/XR Skill
+
+Generate immersive 3D and XR apps controlled by the Mudra Band — works in any
+Chromium browser, with or without an XR headset.
+
+### Prerequisites
+
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
+- This repository cloned locally (the skill lives at `.claude/skills/mudra-xr/`)
+- A modern Chromium browser (Chrome, Edge, Arc) for flat-screen testing
+- Optional: any WebXR-capable device for immersive mode (Quest, mobile Chrome, visionOS)
+
+### Usage
+
+Describe the 3D/XR experience you want:
+
+```
+/mudra-xr Build a Mudra XR app where a 3D cube floats in front of me,
+I pinch to rotate it, and my finger pressure scales it. Colors react to pressure.
+```
+
+Or just ask Claude naturally — it will pick the `mudra-xr` skill when your
+prompt mentions 3D, XR, VR, AR, or spatial interactions:
+
+```
+Build a 3D XR experience where I can use Mudra gestures to navigate a spatial menu
+```
+
+Claude will:
+1. Infer which Mudra signals are needed
+2. Select a seed template from 44 XR Blocks reference assets
+3. Adapt it with full Mudra bindings (simulator panel, keyboard shortcuts, status chip)
+4. Run a 9-item pre-write checklist
+5. Save to `preview/<name>.html` — open it in your browser immediately
+
+### What you'll see (no band, no headset required)
+
+- A 3D scene renders in the browser
+- A compact Mudra simulator strip is pinned to the viewport
+- A status chip reads `Simulated` within 1500 ms
+- Click simulator buttons or press `Space` / `[` / `]` to fire signals
+- An "Enter XR" button appears if your browser supports WebXR
+
+### 3D/XR App Gallery
+
+| App | Signals | Live Link |
+|---|---|---|
+| Pinch Cube | gesture + pressure | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/3D/xr-pinch-cube.html) |
 
 ---
 
@@ -268,52 +321,52 @@ Meditation breathing guide with pressure-based breath tracking
 
 | App | Description | Signals |
 |---|---|---|
-| [Space Invaders](https://jabbourwearable.github.io/mudra-skill/demos/space-invaders.html) | Classic arcade shooter | `nav_direction` + `gesture` |
-| [Neural Pong](https://jabbourwearable.github.io/mudra-skill/demos/neural-pong.html) | Pong with wrist gestures | `nav_direction` + `gesture` |
-| [Neural Snake](https://jabbourwearable.github.io/mudra-skill/demos/neural-snake.html) | Snake game | `nav_direction` + `gesture` |
-| [Music Sequencer](https://jabbourwearable.github.io/mudra-skill/demos/music-sequencer.html) | 8-step beat sequencer | `nav_direction` + `gesture` + `pressure` |
-| [AR Menu](https://jabbourwearable.github.io/mudra-skill/demos/ar-menu.html) | AR-style interface navigation | `nav_direction` + `gesture` |
-| [Document Scroller](https://jabbourwearable.github.io/mudra-skill/demos/document-scroller.html) | Gesture-based document reader | `nav_direction` + `gesture` + `pressure` |
-| [Gesture Speech](https://jabbourwearable.github.io/mudra-skill/demos/gesture-speech.html) | Speech assistance tool | `nav_direction` + `gesture` |
-| [Presentation Controller](https://jabbourwearable.github.io/mudra-skill/demos/presentation-controller.html) | Slide deck remote | `nav_direction` + `gesture` |
-| [Smart Home](https://jabbourwearable.github.io/mudra-skill/demos/smart-home.html) | Home automation control | `nav_direction` + `gesture` + `pressure` |
+| [Space Invaders](https://jabbourwearable.github.io/mudra-skill/demos/2D/space-invaders.html) | Classic arcade shooter | `nav_direction` + `gesture` |
+| [Neural Pong](https://jabbourwearable.github.io/mudra-skill/demos/2D/neural-pong.html) | Pong with wrist gestures | `nav_direction` + `gesture` |
+| [Neural Snake](https://jabbourwearable.github.io/mudra-skill/demos/2D/neural-snake.html) | Snake game | `nav_direction` + `gesture` |
+| [Music Sequencer](https://jabbourwearable.github.io/mudra-skill/demos/2D/music-sequencer.html) | 8-step beat sequencer | `nav_direction` + `gesture` + `pressure` |
+| [AR Menu](https://jabbourwearable.github.io/mudra-skill/demos/2D/ar-menu.html) | AR-style interface navigation | `nav_direction` + `gesture` |
+| [Document Scroller](https://jabbourwearable.github.io/mudra-skill/demos/2D/document-scroller.html) | Gesture-based document reader | `nav_direction` + `gesture` + `pressure` |
+| [Gesture Speech](https://jabbourwearable.github.io/mudra-skill/demos/2D/gesture-speech.html) | Speech assistance tool | `nav_direction` + `gesture` |
+| [Presentation Controller](https://jabbourwearable.github.io/mudra-skill/demos/2D/presentation-controller.html) | Slide deck remote | `nav_direction` + `gesture` |
+| [Smart Home](https://jabbourwearable.github.io/mudra-skill/demos/2D/smart-home.html) | Home automation control | `nav_direction` + `gesture` + `pressure` |
 
 ### IMU Mode Apps
 
 | App | Description | Signals |
 |---|---|---|
-| [Generative Art](https://jabbourwearable.github.io/mudra-skill/demos/generative-art.html) | Tilt-controlled art canvas | `imu_acc` + `imu_gyro` + `gesture` |
-| [3D Model Rotator](https://jabbourwearable.github.io/mudra-skill/demos/model-rotator.html) | Rotate 3D objects with wrist | `imu_acc` + `imu_gyro` |
-| [Mudra Duel](https://jabbourwearable.github.io/mudra-skill/demos/mudra-duel.html) | 1v1 gesture battle game | `imu_acc` + `imu_gyro` + `gesture` |
+| [Generative Art](https://jabbourwearable.github.io/mudra-skill/demos/2D/generative-art.html) | Tilt-controlled art canvas | `imu_acc` + `imu_gyro` + `gesture` |
+| [3D Model Rotator](https://jabbourwearable.github.io/mudra-skill/demos/2D/model-rotator.html) | Rotate 3D objects with wrist | `imu_acc` + `imu_gyro` |
+| [Mudra Duel](https://jabbourwearable.github.io/mudra-skill/demos/2D/mudra-duel.html) | 1v1 gesture battle game | `imu_acc` + `imu_gyro` + `gesture` |
 
 ### Pointer Mode Apps
 
 | App | Description | Signals |
 |---|---|---|
-| [Hands-Free Desktop](https://jabbourwearable.github.io/mudra-skill/demos/hands-free-desktop.html) | Desktop cursor control | `navigation` + `button` + `gesture` |
+| [Hands-Free Desktop](https://jabbourwearable.github.io/mudra-skill/demos/2D/hands-free-desktop.html) | Desktop cursor control | `navigation` + `button` + `gesture` |
 
 ### Pressure & SNC Apps
 
 | App | Description | Signals |
 |---|---|---|
-| [Pressure Painter](https://jabbourwearable.github.io/mudra-skill/demos/pressure-painter.html) | Pressure-sensitive canvas | `pressure` + `gesture` |
-| [EMG Visualizer](https://jabbourwearable.github.io/mudra-skill/demos/emg-visualizer.html) | Real-time SNC/EMG display | `snc` |
-| [Gesture Assistant](https://jabbourwearable.github.io/mudra-skill/demos/gesture-assistant.html) | Gesture recognition helper | `gesture` + `pressure` |
+| [Pressure Painter](https://jabbourwearable.github.io/mudra-skill/demos/2D/pressure-painter.html) | Pressure-sensitive canvas | `pressure` + `gesture` |
+| [EMG Visualizer](https://jabbourwearable.github.io/mudra-skill/demos/2D/emg-visualizer.html) | Real-time SNC/EMG display | `snc` |
+| [Gesture Assistant](https://jabbourwearable.github.io/mudra-skill/demos/2D/gesture-assistant.html) | Gesture recognition helper | `gesture` + `pressure` |
 
 ### Multi-Signal Apps
 
 | App | Description | Signals |
 |---|---|---|
-| [Drum Machine](https://jabbourwearable.github.io/mudra-skill/demos/drum-machine.html) | Gesture-triggered drums | `gesture` + `pressure` |
-| [Runner](https://jabbourwearable.github.io/mudra-skill/demos/runner.html) | Side-scrolling runner game | `gesture` + `pressure` + `nav_direction` |
-| [Waterful Ring Toss](https://jabbourwearable.github.io/mudra-skill/demos/waterful-ring-toss.html) | Classic water ring game | `gesture` + `pressure` + `nav_direction` |
-| [Mudra Monitor](https://jabbourwearable.github.io/mudra-skill/demos/mudra-monitor.html) | Full device telemetry dashboard | All signals |
+| [Drum Machine](https://jabbourwearable.github.io/mudra-skill/demos/2D/drum-machine.html) | Gesture-triggered drums | `gesture` + `pressure` |
+| [Runner](https://jabbourwearable.github.io/mudra-skill/demos/2D/runner.html) | Side-scrolling runner game | `gesture` + `pressure` + `nav_direction` |
+| [Waterful Ring Toss](https://jabbourwearable.github.io/mudra-skill/demos/2D/waterful-ring-toss.html) | Classic water ring game | `gesture` + `pressure` + `nav_direction` |
+| [Mudra Monitor](https://jabbourwearable.github.io/mudra-skill/demos/2D/mudra-monitor.html) | Full device telemetry dashboard | All signals |
 
 ### Starter Template
 
 | App | Description |
 |---|---|
-| [Ultimate Template](https://jabbourwearable.github.io/mudra-skill/demos/mudra-ultimate-template.html) | Baseline template with all signal handlers wired up — fork this to build your own |
+| [Ultimate Template](https://jabbourwearable.github.io/mudra-skill/demos/2D/mudra-ultimate-template.html) | Baseline template with all signal handlers wired up — fork this to build your own |
 
 ---
 
@@ -352,18 +405,26 @@ Every generated app includes keyboard fallback controls:
 mudra-skill/
 ├── .claude/
 │   └── skills/
-│       └── mudra-preview/
-│           ├── SKILL.md              # Claude Code skill definition
+│       ├── mudra-preview/            # 2D Mudra skill
+│       │   ├── SKILL.md              # Claude Code skill definition
+│       │   ├── references/
+│       │   │   └── promt.md          # Full protocol spec & build rules
+│       │   └── assets/               # 21 reference app templates
+│       │       ├── drum-machine.html
+│       │       ├── space-invaders.html
+│       │       └── ... (19 more)
+│       └── mudra-xr/                 # 3D/XR Mudra skill
+│           ├── SKILL.md              # Skill definition + invocation flow
 │           ├── references/
-│           │   └── promt.md          # Full protocol spec & build rules
-│           └── assets/               # 21 reference app templates
-│               ├── drum-machine.html
-│               ├── space-invaders.html
-│               ├── neural-pong.html
-│               └── ... (18 more)
+│           │   ├── promt.md          # XR build rules, 13 sections
+│           │   └── xrpromt.md        # XR Blocks reference corpus (~44 assets)
+│           └── assets/               # 44 single-file XR reference assets
+│               ├── templates/        # 14 XR Blocks templates (0_basic … uikit)
+│               ├── samples/          # 15 XR Blocks samples
+│               └── demos/            # 16 XR Blocks demos
 ├── docs/                             # GitHub Pages site
 │   ├── index.html                    # Landing page & demo gallery
-│   ├── demos/                        # All 21 playable demo apps
+│   ├── demos/                        # All playable demo apps (2D + 3D/XR)
 │   └── assets/images/               # Screenshots & graphics
 ├── gemini-gem/
 │   └── gemini.promt.md              # Gemini Gem system prompt
