@@ -24,9 +24,9 @@ This repository contains two AI skills that turn natural language descriptions i
 
 | Skill | Platform | How to use |
 |---|---|---|
-| **mudra-master** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — router: describe any Mudra app and it picks 2D or 3D for you |
-| **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps |
-| **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps |
+| **mudra-master** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — router: describe any Mudra app and it picks 2D or 3D for you · [⬇ Download zip](Skill%20download/mudra-master.zip) |
+| **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps · [⬇ Download zip](Skill%20download/mudra-preview.zip) |
+| **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps · [⬇ Download zip](Skill%20download/mudra-xr.zip) |
 | **Mudra Studio Master Gem** | [Gemini](https://gemini.google.com/gem/79fd23ccf68f) | Gemini Gem — router: describe any app, it picks 2D or 3D for you |
 | **Mudra Studio 2D Gem** | [Gemini](https://gemini.google.com/gem/29d975c9c7c0) | Gemini Gem — 2D web apps |
 | **Mudra Studio 3D Gem** | [Gemini](https://gemini.google.com/gem/70714fabfb28) | Gemini Gem — 3D/XR/VR/AR apps |
@@ -113,6 +113,21 @@ git clone https://github.com/jabbourWearable/mudra-skill.git
 cd mudra-skill
 claude   # launches Claude Code in this directory
 ```
+
+**Option C — Import a zip file directly into the Claude app (easiest)**
+
+No git required. Download the zip for the skill(s) you want, then import in the Claude desktop app:
+
+| Skill | Download |
+|---|---|
+| **mudra-master** (recommended — routes 2D/3D for you) | [mudra-master.zip](Skill%20download/mudra-master.zip) |
+| **mudra-preview** (2D apps only) | [mudra-preview.zip](Skill%20download/mudra-preview.zip) |
+| **mudra-xr** (3D/XR apps only) | [mudra-xr.zip](Skill%20download/mudra-xr.zip) |
+
+1. Download the zip file above
+2. Open the Claude desktop app → **Settings → Skills**
+3. Click **Import skill** and select the downloaded zip
+4. The skill is immediately available as `/mudra-master`, `/mudra-preview`, or `/mudra-xr`
 
 ### Usage
 
@@ -490,6 +505,10 @@ mudra-skill/
 │   ├── gemini-master.prompt.md      # Gemini Master Gem system prompt (2D + 3D router)
 │   ├── gemini-2d.prompt.md          # Gemini 2D Gem system prompt
 │   └── gemini-3d.prompt.md          # Gemini 3D/XR Gem system prompt
+├── Skill download/                   # Pre-packaged zip files for Claude app import
+│   ├── mudra-master.zip
+│   ├── mudra-preview.zip
+│   └── mudra-xr.zip
 ├── preview/                          # Generated apps land here (gitignored)
 └── README.md
 ```
