@@ -11,7 +11,9 @@
 <p align="center">
   <a href="https://jabbourwearable.github.io/mudra-skill/">Live Demos</a> &nbsp;|&nbsp;
   <a href="#quick-start--claude-code-skill">Claude Code Setup</a> &nbsp;|&nbsp;
-  <a href="#quick-start--gemini-gem">Gemini Gem Setup</a>
+  <a href="#quick-start--gemini-master-gem">Gemini Master Gem</a> &nbsp;|&nbsp;
+  <a href="#quick-start--gemini-gem">Gemini 2D Gem</a> &nbsp;|&nbsp;
+  <a href="#quick-start--gemini-3d-gem">Gemini 3D Gem</a>
 </p>
 
 ---
@@ -22,8 +24,10 @@ This repository contains two AI skills that turn natural language descriptions i
 
 | Skill | Platform | How to use |
 |---|---|---|
+| **mudra-master** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — router: describe any Mudra app and it picks 2D or 3D for you |
 | **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps |
 | **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps |
+| **Mudra Studio Master Gem** | [Gemini](https://gemini.google.com/gem/79fd23ccf68f) | Gemini Gem — router: describe any app, it picks 2D or 3D for you |
 | **Mudra Studio 2D Gem** | [Gemini](https://gemini.google.com/gem/29d975c9c7c0) | Gemini Gem — 2D web apps |
 | **Mudra Studio 3D Gem** | [Gemini](https://gemini.google.com/gem/70714fabfb28) | Gemini Gem — 3D/XR/VR/AR apps |
 
@@ -35,6 +39,7 @@ This repository contains two AI skills that turn natural language descriptions i
 - [Live Demos](#live-demos)
 - [Quick Start — Claude Code Skill (2D)](#quick-start--claude-code-skill)
 - [Quick Start — Mudra 3D/XR Skill](#quick-start--mudra-3dxr-skill)
+- [Quick Start — Gemini Master Gem](#quick-start--gemini-master-gem)
 - [Quick Start — Gemini 2D Gem](#quick-start--gemini-gem)
 - [Quick Start — Gemini 3D Gem](#quick-start--gemini-3d-gem)
 - [Supported Signals](#supported-signals)
@@ -207,9 +212,26 @@ Claude will:
 
 ---
 
+## Quick Start — Gemini Master Gem
+
+Not sure whether you want 2D or 3D? Use the **[Mudra Studio Master Gem](https://gemini.google.com/gem/79fd23ccf68f)** — it routes your prompt to the right builder automatically, just like the `mudra-master` Claude Code skill.
+
+1. Open the **[Mudra Studio Master Gem](https://gemini.google.com/gem/79fd23ccf68f)** in Gemini
+2. Describe the app you want — no need to specify 2D or 3D:
+
+```
+Build a Mudra app — a snake game controlled by directional gestures
+```
+
+3. The gem infers the dimension from cues in your prompt. If it can't tell, it asks exactly one question before generating.
+
+> Use the Master Gem as your default starting point. Switch to the dedicated 2D or 3D gems only when you know which dimension you want.
+
+---
+
 ## Quick Start — Gemini Gem
 
-There are two Gemini Gems — one for 2D apps and one for 3D/XR apps. Both work the same way: describe what you want, and Gemini generates a complete single-file HTML app.
+There are two focused Gemini Gems — one for 2D apps and one for 3D/XR apps. Both work the same way: describe what you want, and Gemini generates a complete single-file HTML app.
 
 ### Mudra Studio 2D Gem
 
@@ -253,7 +275,7 @@ Generates immersive 3D and XR apps powered by XR Blocks — works in any Chromiu
 
 ### Usage
 
-1. Open the **[Mudra Studio 3D Gem](https://gemini.google.com/gem/3d)** in Gemini
+1. Open the **[Mudra Studio 3D Gem](https://gemini.google.com/gem/70714fabfb28)** in Gemini
 2. Describe the 3D/XR experience you want:
 
 ```
@@ -465,8 +487,9 @@ mudra-skill/
 │   ├── demos/                        # All playable demo apps (2D + 3D/XR)
 │   └── assets/images/               # Screenshots & graphics
 ├── gemini-gem/
-│   ├── gemini-2d.promt.md           # Gemini 2D Gem system prompt
-│   └── gemini-3d.promt.md           # Gemini 3D/XR Gem system prompt
+│   ├── gemini-master.prompt.md      # Gemini Master Gem system prompt (2D + 3D router)
+│   ├── gemini-2d.prompt.md          # Gemini 2D Gem system prompt
+│   └── gemini-3d.prompt.md          # Gemini 3D/XR Gem system prompt
 ├── preview/                          # Generated apps land here (gitignored)
 └── README.md
 ```
@@ -484,10 +507,12 @@ mudra-skill/
 
 ### Improving the Skills
 
+- **Claude Master skill**: Edit `.claude/skills/mudra-master/SKILL.md`
 - **Claude 2D skill**: Edit `.claude/skills/mudra-preview/references/promt.md`
 - **Claude 3D skill**: Edit `.claude/skills/mudra-xr/references/promt.md`
-- **Gemini 2D gem**: Edit `gemini-gem/gemini-2d.promt.md`
-- **Gemini 3D gem**: Edit `gemini-gem/gemini-3d.promt.md`
+- **Gemini Master gem**: Edit `gemini-gem/gemini-master.prompt.md`
+- **Gemini 2D gem**: Edit `gemini-gem/gemini-2d.prompt.md`
+- **Gemini 3D gem**: Edit `gemini-gem/gemini-3d.prompt.md`
 
 ---
 

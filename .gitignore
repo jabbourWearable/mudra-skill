@@ -11,5 +11,8 @@ claude.md
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/mudra-xr/
+!.claude/skills/mudra-master/
 
 specs/
+
+full-html-templatesMD/
