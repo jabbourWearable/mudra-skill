@@ -1,0 +1,19 @@
+{
+  "name": "mudra",
+  "description": "Claude Code skills for building Mudra Band apps — generate 2D flat/screen apps, 3D/XR experiences, or let the router auto-classify and hand off.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Wearable Devices",
+    "email": "jabbour.d@wearabledevices.co.il"
+  },
+  "homepage": "https://github.com/jabbourWearable/mudra-skill-2d",
+  "repository": "https://github.com/jabbourWearable/mudra-skill-2d",
+  "license": "MIT",
+  "keywords": [
+    "mudra",
+    "wearable",
+    "gestures",
+    "xr",
+    "webxr"
+  ]
+}
