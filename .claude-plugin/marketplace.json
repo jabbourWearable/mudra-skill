@@ -1,7 +1,6 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "mudra-local",
-  "description": "Local Mudra Band plugin marketplace for development",
+  "name": "mudra-band",
+  "description": "Mudra Band plugin marketplace",
   "owner": {
     "name": "Wearable Devices",
     "email": "jabbour.d@wearabledevices.co.il"
@@ -13,7 +12,7 @@
       "category": "development",
       "source": {
         "source": "git-subdir",
-        "url": "file:///Users/jabbour/Dev/mudra-skill-2d",
+        "url": "https://github.com/jabbourWearable/mudra-skill-2d",
         "path": "mudra-plugin"
       },
       "homepage": "https://github.com/jabbourWearable/mudra-skill-2d"

@@ -4,6 +4,7 @@ xrpromt.md
 .vscode/
 
 claude.md
+!mudra-plugin/CLAUDE.md
 
 .agent/
 .specify/
