@@ -10,7 +10,8 @@
 
 <p align="center">
   <a href="https://jabbourwearable.github.io/mudra-skill/">Live Demos</a> &nbsp;|&nbsp;
-  <a href="#quick-start--claude-code-skill">Claude Code Setup</a> &nbsp;|&nbsp;
+  <a href="#quick-start--claude-code-plugin">Claude Code Plugin</a> &nbsp;|&nbsp;
+  <a href="#quick-start--claude-code-skill">Claude Code Skill</a> &nbsp;|&nbsp;
   <a href="#quick-start--gemini-master-gem">Gemini Master Gem</a> &nbsp;|&nbsp;
   <a href="#quick-start--gemini-gem">Gemini 2D Gem</a> &nbsp;|&nbsp;
   <a href="#quick-start--gemini-3d-gem">Gemini 3D Gem</a>
@@ -24,6 +25,7 @@ This repository contains two AI skills that turn natural language descriptions i
 
 | Skill | Platform | How to use |
 |---|---|---|
+| **mudra** plugin | [Claude Code](https://claude.ai/code) | Claude Code plugin — installs all three skills at once · [Plugin Install](#quick-start--claude-code-plugin) |
 | **mudra-master** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — router: describe any Mudra app and it picks 2D or 3D for you · [⬇ Download zip](Skill%20download/mudra-master.zip) |
 | **mudra-preview** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 2D web apps · [⬇ Download zip](Skill%20download/mudra-preview.zip) |
 | **mudra-xr** | [Claude Code](https://claude.ai/code) | Claude Code CLI skill — 3D/XR/VR/AR apps · [⬇ Download zip](Skill%20download/mudra-xr.zip) |
@@ -37,6 +39,7 @@ This repository contains two AI skills that turn natural language descriptions i
 
 - [What is Mudra Band?](#what-is-mudra-band)
 - [Live Demos](#live-demos)
+- [Quick Start — Claude Code Plugin](#quick-start--claude-code-plugin)
 - [Quick Start — Claude Code Skill (2D)](#quick-start--claude-code-skill)
 - [Quick Start — Mudra 3D/XR Skill](#quick-start--mudra-3dxr-skill)
 - [Quick Start — Gemini Master Gem](#quick-start--gemini-master-gem)
@@ -85,6 +88,54 @@ Try these apps directly in your browser — no Mudra Band required (use the buil
 | Mudra Car | nav_direction + pressure + gesture | [Open Demo](https://jabbourwearable.github.io/mudra-skill/demos/3D/mudra-car.html) |
 
 > **Note:** All demos include a mock WebSocket fallback — they work fully in any browser without the band connected.
+
+---
+
+## Quick Start — Claude Code Plugin
+
+The **mudra plugin** installs all three skills (`mudra-master`, `mudra-preview`, `mudra-xr`) in one step and keeps them up to date automatically. This is the recommended way to get started.
+
+### Prerequisites
+
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
+- A Claude Pro, Max, or Team subscription
+
+### Installation
+
+Open any Claude Code session and run three slash commands:
+
+```
+/plugin marketplace add https://github.com/jabbourWearable/mudra-skill
+```
+```
+/plugin install mudra@mudra-band
+```
+```
+/reload-plugins
+```
+
+That's it — all three skills (`mudra-master`, `mudra-preview`, `mudra-xr`) are now available globally in every Claude Code session.
+
+### Usage
+
+Once installed, the skills are available in any Claude Code session:
+
+```
+/mudra-master build me a snake game controlled by directional gestures
+```
+
+Or just describe your app — `mudra-master` routes automatically to 2D or 3D:
+
+```
+Build a Mudra app — a relaxing bubble garden I can grow with pressure
+```
+
+### Updating
+
+```
+/plugin update mudra
+/reload-plugins
+```
 
 ---
 
