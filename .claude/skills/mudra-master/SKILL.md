@@ -13,7 +13,7 @@ This skill emits no app artifacts of its own. Its sole outputs are a routing dec
 
 Activate when the user:
 
-- Describes something they want to **build / make / create / prototype** with the Mudra Band — an app, experience, tool, timer, counter, demo, game, dashboard, visualizer, panel, or scene — AND
+- Describes something they want to **build / make / create / prototyp e** with the Mudra Band — an app, experience, tool, timer, counter, demo, game, dashboard, visualizer, panel, or scene — AND
 - Has not made clear whether they want a 2D (screen-based) or 3D (spatial / XR / VR / AR) version.
 
 I have 2 sklills and I want to build other skill master that can use both skill, how it can be done ?

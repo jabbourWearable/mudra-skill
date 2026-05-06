@@ -340,13 +340,27 @@ browser transitions to an immersive WebXR session (native WebXR DOM suppression)
 </div>
 ```
 
-### Button groups per signal (render only subscribed signals)
+### Button groups per signal (render ONLY the sub-actions the app actually uses)
 
-| Signal | Buttons |
+The catalog below is the **maximal** set per signal. The simulator panel
+MUST render **only** the sub-actions the generated app handles — never
+extras. Examples:
+
+- App maps `gesture.tap` only → render `Tap`. Omit `2Tap`, `Twist`, `2Twist`.
+- App maps `nav_direction` to Up/Down only → render `↑`, `↓`. Omit
+  `←`, `→`, `Roll L`, `Roll R`.
+- App uses `imu_acc` for X-axis tilt only → render `Tilt X+`, `Tilt X−`.
+  Omit `Tilt Y+`, `Tilt Y−`.
+
+When in doubt, walk every `mudra.on('<signal>', …)` handler and emit a
+button only for sub-actions referenced inside it. Unused buttons are a
+checklist failure (see Section 10, item 6).
+
+| Signal | Maximal buttons (subset based on app handlers) |
 |--------|---------|
 | `gesture` | `Tap`, `2Tap`, `Twist`, `2Twist` |
 | `nav_direction` | `↑`, `↓`, `←`, `→`, `Roll L`, `Roll R` |
-| `navigation` | `↑`, `↓`, `←`, `→` (each emits one delta event of ±8) |
+| `navigation` | `↑`, `↓`, `←`, `→` (each emits one delta event of ±3 — gentle/low-sensitivity default; raise per-app only if the prompt explicitly asks for fast/snappy movement) |
 | `pressure` | Slider `0–100` (label shows current value) |
 | `button` | `Press`, `Release` |
 | `imu_acc` | `Tilt X+`, `Tilt X−`, `Tilt Y+`, `Tilt Y−` (5-frame burst at ±2 m/s²) |
@@ -393,10 +407,16 @@ pressureSlider.addEventListener('input', () => {
 | `Shift` | `button` → press (keydown) / release (keyup) |
 | `[` | `pressure` decrease (−10, min 0) |
 | `]` | `pressure` increase (+10, max 100) |
-| `ArrowUp` | `nav_direction` → Up OR `navigation` delta_y +8 |
-| `ArrowDown` | `nav_direction` → Down OR `navigation` delta_y −8 |
-| `ArrowLeft` | `nav_direction` → Left OR `navigation` delta_x −8 |
-| `ArrowRight` | `nav_direction` → Right OR `navigation` delta_x +8 |
+| `ArrowUp` | `nav_direction` → Up OR `navigation` delta_y +3 |
+| `ArrowDown` | `nav_direction` → Down OR `navigation` delta_y −3 |
+| `ArrowLeft` | `nav_direction` → Left OR `navigation` delta_x −3 |
+| `ArrowRight` | `nav_direction` → Right OR `navigation` delta_x +3 |
+
+**Navigation sensitivity default**: keyboard arrows and sim panel buttons
+emit deltas of **±3** per event (gentle / low-sensitivity baseline). This
+keeps cursor/pan motion calm and predictable. Only raise the magnitude
+when the prompt explicitly calls for fast/snappy movement (racing,
+arcade-twitch, etc.).
 | `q` | `imu_acc` tilt X+ burst |
 | `e` | `imu_acc` tilt X− burst |
 | `r` | `imu_gyro` rot Y+ burst |
@@ -487,32 +507,68 @@ mudra.on('_status', (s) => {
 
 ---
 
-## Section 8 — Motion-Mode Exclusivity (Non-Negotiable)
+## Section 8 — Signal Grouping Rules (Non-Negotiable)
 
-### Signal-to-mode classification
+### Signal group classification
 
-| Mode | Signals owned (mutually exclusive) | Signals that combine freely |
-|------|-----------------------------------|-----------------------------|
-| **Pointer** | `navigation`, `button` | `gesture`, `pressure`, `snc`, `battery` |
-| **Direction** | `nav_direction` | `gesture`, `pressure`, `snc`, `battery` |
-| **IMU** | `imu_acc`, `imu_gyro` | `gesture`, `pressure`, `snc`, `battery` |
-| *(none)* | — | `gesture`, `pressure`, `snc`, `battery` |
+| Group | Signals | Combine freely with |
+|-------|---------|---------------------|
+| **Pointer** | `navigation`, `button` | `gesture` OR `button` (not `pressure` if `gesture` is used) |
+| **Direction** | `nav_direction` | `gesture` OR `pressure` OR `button` (but not `gesture`+`pressure` together) |
+| **IMU+Biometric** | `imu_acc`, `imu_gyro`, `snc` | `gesture` OR `pressure` OR `button` (but not `gesture`+`pressure` together) |
+| *(none)* | — | `gesture` OR `pressure` OR `button` (but not `gesture`+`pressure` together) |
 
-### XOR rule
+### Bundling rule — IMU+Biometric (CRITICAL)
 
-An app MUST subscribe to **at most one** motion mode. Mixing is a
-constitutional violation (Principle III) and triggers a pre-write failure.
+`imu_acc`, `imu_gyro`, and `snc` are an **inseparable bundle**. If the user's prompt
+implies any one of them, subscribe to **all three**. Never subscribe to only one or
+two of them.
+
+```js
+// CORRECT — all three always together
+mudra.subscribe('imu_acc');
+mudra.subscribe('imu_gyro');
+mudra.subscribe('snc');
+
+// WRONG — partial subscriptions
+mudra.subscribe('snc');                   // missing imu_acc and imu_gyro
+mudra.subscribe('imu_acc');               // missing imu_gyro and snc
+```
+
+### XOR rules (all non-negotiable)
+
+1. **Gesture ⊕ Pressure** — an app may use `gesture` OR `pressure`, never both.
+2. **Navigation ⊕ Nav_direction** — an app may use `navigation` OR `nav_direction`, never both.
+3. **Pointer/Direction ⊕ IMU+Biometric** — `navigation` and `nav_direction` cannot be combined with the IMU+Biometric bundle (`imu_acc`/`imu_gyro`/`snc`).
 
 ### Illegal combinations
 
 ```
 // REJECT these signal sets
+gesture + pressure
+navigation + nav_direction
 navigation + imu_acc
 navigation + imu_gyro
-navigation + nav_direction
+navigation + snc
 nav_direction + imu_acc
 nav_direction + imu_gyro
+nav_direction + snc
 button + nav_direction        // button belongs to Pointer mode only
+```
+
+### Valid signal sets (examples)
+
+```
+gesture + button
+pressure + button
+navigation + button
+navigation + button + gesture
+nav_direction
+nav_direction + pressure + button
+imu_acc + imu_gyro + snc
+imu_acc + imu_gyro + snc + gesture
+imu_acc + imu_gyro + snc + button
+imu_acc + imu_gyro + snc + pressure + button
 ```
 
 ### Inference priority for ties
@@ -564,20 +620,25 @@ async function ensureApiKey() {
 
 ## Section 10 — Pre-Write Checklist + Collision Handling
 
-Before calling `Write` to emit a generated app, verify all nine items:
+Before calling `Write` to emit a generated app, verify all items:
 
 | # | Check | Pass condition |
 |---|-------|----------------|
 | 1 | Single file | Exactly one `<html>` document; all CSS in `<style>`; all JS in `<script>` or `<script type="module">` |
 | 2 | Import map | One `<script type="importmap">` block; contents match canonical pins (Section 2) exactly; no unused entries |
 | 3 | xb.Script entry | Top-level logic inside `class <Name> extends xb.Script`; `xb.add(new <Name>())` + `xb.init(new xb.Options())` on `DOMContentLoaded` |
-| 4 | MudraClient | One `MudraClient` instance at module scope; URL = `ws://127.0.0.1:8766`; 1500 ms timeout wired |
+| 4 | MudraClient | One `MudraClient` instance at module scope; URL = `ws://127.0.0.1:8766`; does NOT auto-connect; `setMode()` drives connect/disconnect |
 | 5 | Subscribe commands | Every used signal has exactly one `mudra.subscribe('<signal>')` call; none outside the signal set |
-| 6 | Simulator panel | `<div id="mudra-sim">` present; one button group per subscribed signal; buttons fire via handler, not inline `onclick` |
+| 6 | Simulator panel | `<div id="mudra-sim">` present; ONLY buttons for sub-actions actually handled by the app (no extras like Roll L/R or Twist if unused); buttons fire via handler, not inline `onclick` |
 | 7 | Keyboard bindings | `window.addEventListener('keydown', …, { capture: true })` present; `event.stopPropagation()` on every Mudra-claimed key |
-| 8 | Status indicator | `<div id="mudra-status">` present; wired to `mudra.on('_status', …)` |
+| 8 | Status indicator | `<div id="mudra-status">` present; text states are `Manual` / `Connecting…` / `Connected` / `Disconnected` (Section 15); no `simulated` strings |
 | 9 | AI-key safety | If `usesAI`: zero API-key strings in source (run regex scan); key obtained via in-UI dialog; lifecycle matches plan |
 | 10 | Background | Exactly one `applyBackground_<id>()` method in the class; called as the first line of `init()`; id matches one of the five catalog rows (Section 14) |
+| 11 | Mode toggle | `<div id="mode-toggle">` with **Manual** + **Mudra** buttons; Manual is the default on load; toggle remains clickable when disconnected; flipping atomically opens/closes the socket per Section 15 |
+| 12 | Band-state polling | In Mudra mode the app sends `{command:"get_status"}` on `ws.onopen` and every 2000 ms thereafter; pill flips to `Connected` ONLY when `data.device.state === "connected"` |
+| 13 | No disconnect overlay | No banner / toast / modal / inline alert ever rendered for disconnect — pill is the only indicator |
+| 14 | Footer | Exactly one `<div id="mudra-badge">` containing the literal text `Created by Mudra` (no variants) |
+| 15 | Mock is passive | `MudraClient._startMock()` (or equivalent) starts NO intervals — synthetic signals come only from sim-panel clicks and keyboard shortcuts |
 
 ### Retry policy
 
@@ -624,18 +685,6 @@ mudra.on('pressure', (data) => {
 mudra.subscribe('pressure');
 ```
 
-### imu_acc / imu_gyro → camera / object orientation
-
-```js
-// In init():
-mudra.on('imu_acc', (data) => {
-  const [ax, ay] = data.values;
-  this.mesh.rotation.x = THREE.MathUtils.clamp(ax * 0.1, -Math.PI / 4, Math.PI / 4);
-  this.mesh.rotation.z = THREE.MathUtils.clamp(ay * 0.1, -Math.PI / 4, Math.PI / 4);
-});
-mudra.subscribe('imu_acc');
-```
-
 ### nav_direction → spatial menu step
 
 ```js
@@ -652,26 +701,46 @@ mudra.on('nav_direction', (data) => {
 mudra.subscribe('nav_direction');
 ```
 
-### snc → visual feedback overlay
+### imu_acc + imu_gyro + snc bundle → subscribe all three together
+
+`imu_acc`, `imu_gyro`, and `snc` are always subscribed together. Register handlers
+for each signal you actually use in the app, but always send all three subscribe commands.
 
 ```js
 // In init():
+mudra.on('imu_acc', (data) => {
+  const [ax, ay] = data.values;
+  this.mesh.rotation.x = THREE.MathUtils.clamp(ax * 0.1, -Math.PI / 4, Math.PI / 4);
+  this.mesh.rotation.z = THREE.MathUtils.clamp(ay * 0.1, -Math.PI / 4, Math.PI / 4);
+});
+mudra.on('imu_gyro', (data) => {
+  const [gx] = data.values;
+  this.mesh.rotation.y += gx * 0.001;
+});
 mudra.on('snc', (data) => {
   const ch1 = data.values[0];
   const latest = ch1[ch1.length - 1];               // most recent sample
   const norm = Math.min(1, Math.abs(latest) / 500); // normalize
   this.overlay.material.opacity = norm * 0.7;
 });
+// ALWAYS subscribe all three — they form an inseparable bundle
+mudra.subscribe('imu_acc');
+mudra.subscribe('imu_gyro');
 mudra.subscribe('snc');
 ```
 
 ### navigation → continuous cursor / pan
 
+**Default sensitivity multiplier: `0.002`** (gentle / low-sensitivity).
+Use this baseline for all navigation/cursor/pan bindings. Only raise it
+when the prompt explicitly asks for fast/snappy movement.
+
 ```js
 // In init():
+const NAV_SENSITIVITY = 0.002;          // gentle default — slow, predictable
 mudra.on('navigation', (data) => {
-  this.cursorX = THREE.MathUtils.clamp(this.cursorX + data.delta_x * 0.005, -1, 1);
-  this.cursorY = THREE.MathUtils.clamp(this.cursorY - data.delta_y * 0.005, -1, 1);
+  this.cursorX = THREE.MathUtils.clamp(this.cursorX + data.delta_x * NAV_SENSITIVITY, -1, 1);
+  this.cursorY = THREE.MathUtils.clamp(this.cursorY - data.delta_y * NAV_SENSITIVITY, -1, 1);
   this.cursor.position.set(this.cursorX, this.cursorY, -xb.user.objectDistance);
 });
 mudra.subscribe('navigation');
@@ -914,3 +983,183 @@ class MainScript extends xb.Script {
    that follows the helper call (e.g., add extra lights, change fog, add props).
 5. If the user explicitly asks for a background in their prompt (e.g., "on a
    starfield", "sunset sky"), use that one regardless of scoring.
+
+---
+
+## Section 15 — Mode Toggle (Manual / Mudra) — Required
+
+**This section supersedes Section 4's auto-fallback "simulated" status and
+Section 7's `simulated` / `disconnected-simulated` states for all new
+apps.** Every XR app generated by this skill MUST implement the Mode
+Toggle exactly as specified here. Canonical protocol:
+`references/agent_protocol.json` (v2.0).
+
+### Summary
+
+The user picks how the app is driven via a visible **Mode** control,
+rendered as a 2D DOM overlay (it disappears automatically in immersive
+WebXR sessions, like the simulator panel and status pill):
+
+- **Manual** (default on load): the simulator panel is fully interactive.
+  Sim-panel actions inject synthetic signal messages into the same handler
+  pipeline that real WebSocket messages would flow through. **No WebSocket
+  connection is opened in Manual mode.** The XR scene reacts only to
+  signal handlers — never to direct DOM clicks bypassing the signal path.
+- **Mudra**: the app opens one WebSocket to `ws://127.0.0.1:8766` and
+  subscribes to its signals one-at-a-time. The simulator panel is
+  visually disabled (greyed-out, `pointer-events: none`,
+  `aria-disabled="true"`) and emits no synthetic signals. The
+  connection-status pill reflects band-pairing state via `get_status`
+  polling — **no separate overlay, toast, or banner is rendered.**
+
+**The Mode toggle MUST remain fully clickable and keyboard-focusable at
+all times** — including while the band is disconnected. Manual is the
+default on first load.
+
+### State machine
+
+```text
+type Mode = "manual" | "mudra"                          // default "manual"
+type ConnectionState =
+  | "idle"          // No socket open. Always the case in Manual.
+  | "connecting"    // Socket opening, OR socket open but band-pairing not yet confirmed via get_status.
+  | "connected"     // Socket open AND last get_status response had data.device.state === "connected".
+  | "disconnected"  // Socket closed/errored, OR socket open but data.device.state !== "connected".
+```
+
+Lazy-WS lifecycle (mandatory):
+
+| Transition | Action |
+|------------|--------|
+| page load | `mode = "manual"`, `connectionState = "idle"`, NO socket |
+| Manual → Mudra | open new socket, set `connectionState = "connecting"` |
+| Mudra → Manual | close socket, cancel any in-flight reconnect timer, set `connectionState = "idle"` |
+| WS `open` (in Mudra) | keep `connectionState = "connecting"`, send all `subscribe` commands, send `{command:"get_status"}`, start status-poll timer |
+| inbound `status` with `data.device.state === "connected"` (in Mudra) | `connectionState = "connected"` |
+| inbound `status` with `data.device.state !== "connected"` (in Mudra) | `connectionState = "disconnected"`, **keep socket open** — do NOT closeSocket, do NOT schedule WS reconnect; status-poll will surface the band coming back |
+| inbound `connection_status: connected` (in Mudra) | request a fresh `get_status`; do not flip the pill on this alone |
+| inbound `connection_status: disconnected` (in Mudra) | `connectionState = "disconnected"` |
+| WS error / WS close (in Mudra) | `connectionState = "disconnected"`, stop status-poll, schedule socket reconnect |
+| reconnect tick (in Mudra & socket dead) | open new socket → `connecting` |
+
+**Single-socket guarantee:** never have two `WebSocket` instances open at
+once. Use a connection token to neutralise rapid-toggle races (see the
+`MudraClient` extensions below).
+
+### MudraClient changes vs. Section 4
+
+The `MudraClient` from Section 4 must be extended (or replaced) so it:
+
+1. Does NOT auto-connect in its constructor. Connection is driven by
+   `setMode("mudra")` only.
+2. Exposes `setMode(mode)` to flip between `"manual"` and `"mudra"`.
+3. In Manual mode, the `_startMock()` interval generators (if any) are
+   NOT started. Mock signals must be **passive**: emitted only when the
+   sim panel is clicked or a keyboard shortcut fires. (Memory:
+   `MudraClient mock must be passive` — strip auto-firing intervals from
+   `_startMock()`; sim panel clicks and keys are the only signal source.)
+4. On entering Mudra mode, opens one WebSocket, sends `subscribe` for
+   every signal in its subscription list, sends `{command:"get_status"}`
+   immediately, and starts a 2 s `get_status` poll while the socket is
+   `OPEN`.
+5. Emits `_status` events with the new four-state vocabulary:
+   `"idle" | "connecting" | "connected" | "disconnected"`. The legacy
+   `"simulated"` / `"disconnected-simulated"` strings are removed.
+
+### Disconnect detection — band state via `get_status` polling (mandatory)
+
+**The WebSocket handshake to `127.0.0.1:8766` only proves the Companion
+service is up. It does NOT prove the user's Mudra Band is paired.** The
+Companion accepts socket connections even when no band is bonded — so
+flipping the pill to "Connected" on `ws.onopen` is wrong. The pill MUST
+reflect the band itself, not the socket.
+
+The source of truth is the `status` response to `{command:"get_status"}`:
+
+```json
+> {"command":"get_status"}
+< {"type":"status","data":{"device":{"state":"connected", ... }, ...}, "timestamp": ...}
+< {"type":"status","data":{"device":{"state":"disconnected", ...}, ...}, "timestamp": ...}
+```
+
+Rules:
+
+1. On `ws.onopen` (in Mudra mode): stay in `connecting`; send all
+   `subscribe` commands; send `{command:"get_status"}`; start a
+   **status-poll timer** that sends `{command:"get_status"}` every
+   **2000 ms** while `mode === "mudra"` and the socket is `OPEN`.
+2. On inbound `{type:"status"}` (in Mudra mode):
+   - `data?.device?.state === "connected"` → `setState("connected")`.
+   - Else → `setState("disconnected")`. Keep the socket open. Do NOT
+     `closeSocket()`. The next poll tick picks the band up after pairing.
+3. On inbound `{type:"connection_status"}`: hint only. On `disconnected`,
+   flip the pill. On `connected`, send a fresh `{command:"get_status"}`
+   and let the `status` handler do the actual transition.
+4. On WS `error` / `close` (in Mudra mode): `setState("disconnected")`,
+   stop the status-poll timer, `scheduleReconnect()`.
+5. On Manual mode: stop the status-poll timer in `closeSocket()`.
+
+Do not poll faster than 1 s; do not poll slower than 5 s. 2 s is
+mandated. The pill MAY sit on `Connecting…` for up to one poll cycle
+(~2 s) after entering Mudra mode while the first `status` round-trips —
+that is correct behaviour.
+
+### Reconnect backoff
+
+While `mode === "mudra" && connectionState === "disconnected"` AND the
+socket itself is dead (not just the band):
+
+```js
+const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 5000, 5000];   // capped at 5s
+```
+
+Reset the index on every successful `connected` transition.
+
+### Status pill text states (replaces Section 7)
+
+| connectionState | textContent | colour hint |
+|-----------------|-------------|-------------|
+| `idle` (Manual) | `Manual` | neutral |
+| `connecting` | `Connecting…` | amber |
+| `connected` | `Connected` | green |
+| `disconnected` | `Disconnected` | red |
+
+The pill is the **only** disconnect indicator. No banner, toast, or
+modal. The simulator panel is greyed (reduced opacity,
+`pointer-events: none`) when in Mudra + `disconnected`, but the pill is
+still the only textual disconnect cue.
+
+### Mode-toggle DOM sketch
+
+```html
+<div id="mode-toggle" role="tablist" aria-label="Mode">
+  <button id="mode-manual" role="tab" aria-selected="true">Manual</button>
+  <button id="mode-mudra"  role="tab" aria-selected="false">Mudra</button>
+</div>
+<div id="mudra-status" class="conn-manual">Manual</div>
+```
+
+On every mode change, atomically: cancel any reconnect timer, stop the
+status-poll, close any open socket, reset `connToken`, then either
+(Manual) leave `connectionState = "idle"` OR (Mudra) call `openSocket()`.
+
+---
+
+## Section 16 — Footer Branding — "Created by Mudra"
+
+Every generated app MUST render a small footer/badge with the **exact**
+text **`Created by Mudra`**. Never "Created with Mudra Studio", never
+"Powered by Mudra", never any other variant. The badge is a 2D DOM
+overlay (disappears in immersive WebXR like the rest of the chrome).
+
+```html
+<div id="mudra-badge" style="
+  position: fixed; bottom: 8px; right: 12px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 0.75rem; font-family: system-ui, sans-serif;
+  background: rgba(0,0,0,0.5); color: #fff; opacity: 0.85;
+  z-index: 9999; pointer-events: none;">Created by Mudra</div>
+```
+
+Position is flexible if it would overlap the simulator panel — keep the
+text identical.
