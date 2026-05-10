@@ -94,6 +94,7 @@ class UIManager extends xb.Script {
 }
 
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.enableUI();
 
 document.addEventListener('DOMContentLoaded', function () {

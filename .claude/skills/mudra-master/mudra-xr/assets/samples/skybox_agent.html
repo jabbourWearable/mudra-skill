@@ -362,6 +362,7 @@ async function start() {
     await requestAudioPermission();
 
     const options = new xb.Options();
+    options.simulator.instructions.enabled = false;
     options.enableUI();
     options.enableHands();
     options.enableAI();

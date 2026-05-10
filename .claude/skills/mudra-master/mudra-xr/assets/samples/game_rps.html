@@ -1076,6 +1076,7 @@ class GameRps extends xb.Script {
 
 // --- Main entry point ---
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.enableReticles();
 options.enableHands();
 options.simulator.defaultMode = xb.SimulatorMode.POSE;

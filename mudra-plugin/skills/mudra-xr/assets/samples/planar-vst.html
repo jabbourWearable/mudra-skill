@@ -29,6 +29,7 @@
 
       document.addEventListener('DOMContentLoaded', function () {
         const options = new xb.Options();
+        options.simulator.instructions.enabled = false;
         options.enableCamera();
         options.deviceCamera.videoConstraints = {
           width: {ideal: 1280},

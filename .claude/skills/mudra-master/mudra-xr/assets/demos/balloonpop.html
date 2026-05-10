@@ -397,6 +397,7 @@ class BalloonGame extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', () => {
   const o = new xb.Options();
+  o.simulator.instructions.enabled = false;
   o.enableUI();
   o.physics.RAPIER = RAPIER;
   o.physics.useEventQueue = true;

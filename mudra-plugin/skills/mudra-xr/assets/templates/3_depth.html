@@ -76,6 +76,7 @@ class PawnPlacer extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', async function () {
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.reticles.enabled = true;
   options.depth = new xb.DepthOptions(xb.xrDepthMeshOptions);
   await xb.init(options);

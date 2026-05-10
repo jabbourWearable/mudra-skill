@@ -230,6 +230,7 @@ const options = new xb.Options({
   visualizeRays: true,
   depth: xb.xrDepthMeshPhysicsOptions,
 });
+options.simulator.instructions.enabled = false;
 
 function start() {
   xb.add(new MeasureScene());

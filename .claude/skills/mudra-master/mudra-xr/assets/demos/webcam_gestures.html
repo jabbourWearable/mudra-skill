@@ -237,6 +237,7 @@ class GestureToSimulatorBridge extends xb.Script {
 }
 
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.enableUI();
 options.simulator.defaultMode = xb.SimulatorMode.POSE;
 options.simulator.stereo.enabled = true;

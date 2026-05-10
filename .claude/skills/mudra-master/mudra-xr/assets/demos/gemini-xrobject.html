@@ -259,6 +259,7 @@ class XRObjectManager extends xb.Script {
 
 // --- main ---
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.deviceCamera.enabled = true;
 options.deviceCamera.videoConstraints = {width: {ideal: 1280}, height: {ideal: 720}, facingMode: 'environment'};
 options.permissions.camera = true;

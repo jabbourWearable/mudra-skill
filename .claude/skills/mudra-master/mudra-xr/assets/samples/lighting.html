@@ -121,6 +121,7 @@ class LightingScene extends xb.Script {
 
 // Set up depth mesh options. Need depth mesh to render shadows to.
 let options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.depth = new xb.DepthOptions(xb.xrDepthMeshOptions);
 options.depth.enabled = true;
 options.depth.depthMesh.enabled = true;

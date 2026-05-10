@@ -796,6 +796,7 @@ class WindowReceiver extends xb.Script {
 // --- Main entry point ---
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.enableUI();
 
   xb.add(new WindowReceiver());

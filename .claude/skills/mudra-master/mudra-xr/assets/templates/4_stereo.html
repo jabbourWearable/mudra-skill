@@ -73,6 +73,7 @@ class StereoImage extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.simulator.stereo.enabled = true;
   xb.add(new StereoImage());
   xb.init(options);

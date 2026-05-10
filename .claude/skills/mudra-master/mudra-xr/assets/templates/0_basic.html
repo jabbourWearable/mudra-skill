@@ -55,7 +55,9 @@ class MainScript extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', function () {
   xb.add(new MainScript());
-  xb.init(new xb.Options());
+  const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
+  xb.init(options);
 });
     </script>
   </body>

@@ -407,22 +407,46 @@ pressureSlider.addEventListener('input', () => {
 | `Shift` | `button` → press (keydown) / release (keyup) |
 | `[` | `pressure` decrease (−10, min 0) |
 | `]` | `pressure` increase (+10, max 100) |
-| `ArrowUp` | `nav_direction` → Up OR `navigation` delta_y +3 |
-| `ArrowDown` | `nav_direction` → Down OR `navigation` delta_y −3 |
-| `ArrowLeft` | `nav_direction` → Left OR `navigation` delta_x −3 |
-| `ArrowRight` | `nav_direction` → Right OR `navigation` delta_x +3 |
+| `i` | `nav_direction` → Up OR `navigation` delta_y +3 |
+| `k` | `nav_direction` → Down OR `navigation` delta_y −3 |
+| `j` | `nav_direction` → Left OR `navigation` delta_x −3 |
+| `l` | `nav_direction` → Right OR `navigation` delta_x +3 |
 
-**Navigation sensitivity default**: keyboard arrows and sim panel buttons
-emit deltas of **±3** per event (gentle / low-sensitivity baseline). This
-keeps cursor/pan motion calm and predictable. Only raise the magnitude
-when the prompt explicitly calls for fast/snappy movement (racing,
-arcade-twitch, etc.).
-| `q` | `imu_acc` tilt X+ burst |
-| `e` | `imu_acc` tilt X− burst |
-| `r` | `imu_gyro` rot Y+ burst |
-| `f` | `imu_gyro` rot Y− burst |
+**Navigation sensitivity default**: keyboard `I`/`J`/`K`/`L` and sim panel
+buttons emit deltas of **±3** per event (gentle / low-sensitivity
+baseline). This keeps cursor/pan motion calm and predictable. Only raise
+the magnitude when the prompt explicitly calls for fast/snappy movement
+(racing, arcade-twitch, etc.).
+| `u` | `imu_acc` tilt X+ burst |
+| `o` | `imu_acc` tilt X− burst |
+| `m` | `imu_gyro` rot Y+ burst |
+| `n` | `imu_gyro` rot Y− burst |
 
 For `imu` bursts: fire 5 synthetic frames at ±[2, 0, 9.81] m/s² (acc) or ±[10, 0, 0.5] deg/s (gyro).
+
+### Reserved keys & mouse — owned by XR Blocks desktop simulator
+
+The XR Blocks desktop simulator (active whenever the app runs in a flat
+browser without a WebXR session) owns the keys and mouse gestures that
+let the user navigate the 3D scene. Mudra MUST NOT claim or
+`stopPropagation()` any of these — they are how the user orbits, walks,
+and zooms while previewing the app:
+
+| Input | XR Blocks role |
+|-------|----------------|
+| `W` `A` `S` `D` | Walk camera forward / left / back / right |
+| `ArrowUp` `ArrowDown` `ArrowLeft` `ArrowRight` | Camera nav (alt to WASD) |
+| `Q` `E` | Camera roll / vertical |
+| `R` | Reset camera pose |
+| Right-click drag | Orbit / look around |
+| Mouse wheel | Zoom in / out |
+
+**Why Mudra uses `I`/`J`/`K`/`L` and `U`/`O`/`M`/`N`**: these keys are
+explicitly off the XR Blocks reserved set, so the desktop simulator
+keeps full camera control while the band-driven keyboard shortcuts
+remain available for testing without a band. Never reassign a Mudra
+shortcut onto a reserved key, even when the app does not subscribe to a
+navigation signal.
 
 ### Attachment rule (critical)
 
@@ -445,17 +469,18 @@ window.addEventListener('keydown', (e) => {
       e.stopPropagation();
       adjustPressure(+10);
       break;
-    case 'ArrowUp':
+    case 'KeyI':
       e.stopPropagation();
       handleNavDirection({ direction: 'Up', timestamp: Date.now() });
       break;
-    // ... etc for subscribed keys only
+    // ... etc for subscribed keys only — using I/J/K/L for nav and U/O/M/N for IMU
   }
 }, { capture: true });
 ```
 
 Only intercept keys for signals the app actually subscribes to. Do NOT
-`stopPropagation` on keys that no Mudra signal handles — XR Blocks needs those.
+`stopPropagation` on keys that no Mudra signal handles — XR Blocks needs
+those, especially the reserved set above (WASD, arrows, Q/E/R, mouse).
 
 ---
 
@@ -816,27 +841,59 @@ catalog below inside `init()`, before adding any other scene content. The
 helper is a method on the `xb.Script` subclass — copy its body into the class
 and call it from `init()` first thing.
 
-### Selection algorithm
+### Selection (vibe-based)
 
-Score every row against the user's prompt:
+Read the prompt's vibe and pick the **one** row whose use-case best fits the
+mood and concept. There is no keyword-scoring algorithm — use judgment.
 
-1. `+2` per keyword from the background's `keywords` that appears in the lowercased prompt.
-2. `+1` if the background's `fits_signals` overlaps the inferred signal set.
-3. `+1` if the background's `pairs_with_templates` contains the chosen template id.
+**Rules, in priority order:**
 
-Tie-break order: `solid_studio` (safest, UI-friendly) → `starfield` → `gradient_sky` → `grid_cyber` → `skybox_texture`.
-
-If no background scores above 0, default to `solid_studio`.
+1. **Inline override** — if the prompt contains `[bg=<id>]` (e.g. `[bg=starfield]`), use it verbatim, no inference.
+2. **Explicit phrase** — if the prompt names a background ("starfield", "sunset sky", "cyber grid", "in the forest", "synthwave", "outdoor photo"), pick the matching row.
+3. **Vibe match** — otherwise pick the row whose use-case best matches the prompt:
+   - Calm / meditative / atmospheric / emotional / time-of-day → `gradient_sky`
+   - Space / cosmos / abstract object scenes / minimal stage → `starfield`
+   - UI panels / menus / dashboards / clean product showcase → `solid_studio`
+   - Game / arcade / cyberpunk / synthwave / neon / energetic → `grid_cyber`
+   - Outdoor / photoreal / immersive real-world panorama → `skybox_texture`
+4. **`solid_studio` is reserved for UI-first scenes.** It's visually flat by design — only use it when the app is genuinely about menus, dashboards, panels, or product showcases where the background should disappear behind the chrome. Do **not** use it as a generic fallback.
+5. **When genuinely undecidable**, prefer `gradient_sky` (broadly flattering, atmospheric). Never default to `solid_studio` for a non-UI prompt.
 
 ### Catalog
 
-| id | keywords | fits_signals | pairs_with_templates | use_case |
-|----|----------|--------------|----------------------|----------|
-| `starfield` | `["space","star","galaxy","cosmos","universe","planet","solar","nebula","night","astronomy","orbit"]` | any | `0_basic`, `8_objects`, `lighting` | Deep-space / astronomy scenes |
-| `gradient_sky` | `["sky","gradient","sunset","sunrise","horizon","dawn","dusk","pastel","dreamy","ethereal","atmosphere","weather"]` | any | `0_basic`, `rain`, `lighting` | Open-air, emotive, atmospheric |
-| `solid_studio` | `["menu","ui","panel","studio","minimal","clean","product","showcase","interface","card","dashboard"]` | any | `1_ui`, `uikit`, `ui`, `virtual-screens` | UI panels, product demos, clean showcases |
-| `grid_cyber` | `["cyber","grid","matrix","retro","synthwave","vapor","tron","neon","arcade","game","futuristic","sci-fi"]` | any | `0_basic`, `ballpit`, `drone`, `balloonpop` | Synthwave / cyberpunk / game scenes |
-| `skybox_texture` | `["outdoor","forest","mountain","beach","desert","photo","photographic","immersive","panorama","skybox","environment","real-world"]` | any | `0_basic`, `3_depth`, `8_objects` | Photoreal / immersive outdoor |
+| id | vibe / use_case | pairs naturally with | XR Blocks room |
+|----|-----------------|----------------------|----------------|
+| `starfield` | Deep-space, astronomy, cosmos, abstract object scenes, minimal stage | `0_basic`, `8_objects`, `lighting` | hide |
+| `gradient_sky` | Open-air, calm, meditative, emotional, atmospheric, time-of-day | `0_basic`, `rain`, `lighting` | hide |
+| `solid_studio` | UI panels, dashboards, clean product showcases (UI-first only) | `1_ui`, `uikit`, `ui`, `virtual-screens` | keep |
+| `grid_cyber` | Synthwave, cyberpunk, arcade, neon, energetic games | `0_basic`, `ballpit`, `drone`, `balloonpop` | hide |
+| `skybox_texture` | Photoreal, immersive, outdoor, real-world panorama | `0_basic`, `3_depth`, `8_objects` | hide |
+
+### Room visibility (XR Blocks default scene)
+
+XR Blocks' desktop simulator renders a **default room** (floor + walls)
+behind your scene whenever the app runs in a flat browser without an
+active WebXR session. The room is useful spatial context for UI-first
+apps but competes visually with immersive backgrounds (the user sees
+the room walls poking through the starfield / sky dome).
+
+The "XR Blocks room" column above declares per-background behavior:
+
+- **hide**: set `options.simulator.scenePath = null` before `xb.init(options)`. Removes the default room so the chosen background dome is the entire environment. Used by every immersive row.
+- **keep**: do not set `scenePath`. The default room renders, and `solid_studio`'s dome + floor sit inside it for UI-friendly spatial grounding.
+
+Wire it into the entry point alongside the existing simulator option:
+
+```js
+const options = new xb.Options();
+options.simulator.instructions.enabled = false;
+options.simulator.scenePath = null;   // <-- only when chosen bg row says "hide"
+xb.init(options);
+```
+
+The `scenePath = null` line is **conditional on the chosen background**.
+Never set it for `solid_studio`. Always set it for `starfield`,
+`gradient_sky`, `grid_cyber`, and `skybox_texture`.
 
 ### Drop-in snippets
 
@@ -1163,3 +1220,131 @@ overlay (disappears in immersive WebXR like the rest of the chrome).
 
 Position is flexible if it would overlap the simulator panel — keep the
 text identical.
+
+---
+
+## Section 17 — Onboarding Modal (mandatory) — feature 005-onboarding-modal
+
+Every generated XR app MUST ship a first-run onboarding modal that greets
+the user, lists every action the app supports, and shows two control hints
+per action: the **Mudra** trigger (canonical signal) and the **Manual**
+trigger (keyboard / mouse). The modal closes via `×`, the **Got it** button,
+or `Escape`, and reopens via a small floating `?` icon.
+
+### XR-specific behavior (read carefully)
+
+The onboarding modal is a **2D HTML overlay** shown before immersive entry.
+
+- **MANDATORY: Disable the XR Blocks default Welcome overlay.** When the
+  Simulator addon is imported (`import 'xrblocks/addons/simulator/SimulatorAddons.js';`),
+  XR Blocks injects its own "Welcome to XR Blocks!" intro modal that
+  describes the User-Mode keyboard controls (W/A/S/D, Q/E, right-click).
+  This overlay competes visually with the Mudra onboarding modal and must
+  be suppressed. Immediately after constructing the options object, set:
+
+  ```js
+  const options = new xb.Options();
+  options.simulator.instructions.enabled = false; // suppress XR Blocks default Welcome overlay; the Mudra onboarding modal replaces it
+  // ...rest of options config
+  xb.init(options);
+  ```
+
+  The line goes after `new xb.Options()` (or `new xb.Options({...})`) and
+  before `xb.init(...)`. Use the same variable name the surrounding code
+  uses (`options`, `opts`, `o`, etc.). If the construction is inlined as
+  `xb.init(new xb.Options())`, refactor to a temp variable so the disable
+  line has something to attach to.
+
+- **Do NOT** mirror the Mudra modal as a 3D panel inside the XR scene.
+  In-XR re-onboarding is explicitly out of scope for v1 (per spec
+  clarification Q3). To re-read controls during a session, the user exits
+  immersive mode and clicks the `?` icon.
+- The inline `<script>` already listens for `xrsession-start` /
+  `vr-session-start` / `ar-session-start` window events and hides both the
+  modal and the `?` icon while the immersive session is active. Do NOT edit
+  that hide/show wiring — XR Blocks fires those events and the contract
+  depends on them.
+- The modal layers above the XR canvas in 2D mode. Its `z-index` (9999) is
+  higher than the simulator panel, the connection-status indicator, and the
+  "Created by Mudra" badge from Section 16, by design.
+
+### The fixed block
+
+The modal block (markup + CSS + JS) is **fixed**. The full reference lives
+in the spec at `specs/005-onboarding-modal/contracts/onboarding-block.md`.
+Copy it verbatim into every generated XR app:
+
+- The CSS goes inside a `<style>` block in the document `<head>`. (Most XR
+  templates do not yet ship a `<style>` block — add one when generating an
+  app from a raw template.)
+- The `<dialog id="mudra-onboarding">…</dialog>` markup plus the
+  `<button id="mudra-onboarding-help">?</button>` sibling go at the end of
+  `<body>`.
+- A new `<script>` (NOT `type="module"`) carrying the modal's IIFE goes
+  after the modal markup, before `</body>`. The IIFE is order-independent
+  with the XR Blocks `<script type="module">` because it does not import
+  XR Blocks symbols.
+
+The ONLY parts you may change per generated app are:
+
+1. **The `ACTIONS` constant** inside the modal's inline `<script>`. One row
+   per user-triggerable action this app implements.
+2. **Optionally** the `data-app-name="..."` attribute on `#mudra-onboarding`
+   when the filename derivation would mis-capitalize an acronym (e.g.,
+   `data-app-name="AR Menu"` for `ar-menu.html`).
+
+Nothing else in the block may differ — same markup, same class names, same
+CSS, same dismiss/reopen wiring. Two generated apps must be byte-identical
+inside the modal block aside from `ACTIONS` and `data-app-name`.
+
+### `ACTIONS` shape
+
+```js
+const ACTIONS = [
+  { label: "Toggle XR session", mudra: "gesture: thumb-tap", manual: "Enter" },
+  { label: "Look around",       mudra: null,                 manual: "Right-click + drag" },
+  { label: "Move",              mudra: null,                 manual: "W A S D" },
+];
+```
+
+Each entry has three fields:
+
+- **`label`** (required, string) — the **behavior** in plain English ("Toggle
+  XR", "Pinch to grab", "Tilt camera"). NOT the control name.
+- **`mudra`** (string OR `null`) — the canonical Mudra trigger. Must begin
+  with one of the nine canonical signal names: `gesture`, `button`,
+  `pressure`, `navigation`, `nav_direction`, `imu_acc`, `imu_gyro`, `snc`,
+  `battery`. Optionally followed by `:` + qualifier or a parenthetical:
+  `"gesture: pinch"`, `"pressure (thumb-index)"`, `"imu_acc (tilt)"`. Use
+  `null` only when the action genuinely has no Mudra trigger (common in XR
+  for camera / look controls).
+- **`manual`** (string OR `null`) — the keyboard / mouse fallback exactly as
+  it appears in this app's simulator panel.
+
+### Cross-row invariants (REQUIRED — verify before emitting)
+
+- At least one of `mudra` / `manual` is non-null on every row.
+- No two rows share the same `manual` value.
+- No two rows share the same effective `mudra` trigger.
+- Every keyboard shortcut wired up appears as `manual` on exactly one row.
+- Every signal subscription appears as `mudra` on exactly one row.
+- No row references a control the app does not actually wire up.
+
+### Anti-patterns (will fail review)
+
+- ❌ Omitting `options.simulator.instructions.enabled = false;` — the XR
+  Blocks default Welcome overlay will then cover or duplicate the Mudra
+  onboarding modal. This is a regression of feature 005-onboarding-modal.
+- ❌ Mirroring the modal as a 3D panel inside the XR scene (out of scope v1).
+- ❌ Editing the `xrsession-start` / `xrsession-end` hide-show wiring.
+- ❌ `mudra: "Pinch"` — must be `"gesture: pinch"`.
+- ❌ `mudra: "squeeze"` — renamed; use `"pressure (thumb-index)"`.
+- ❌ A row with `mudra: null, manual: null` — meaningless, drop it.
+- ❌ Two rows with the same `manual` value — keyboard collision.
+- ❌ A `manual` shortcut not wired up — orphan.
+- ❌ A signal subscription with no row referencing it — missing.
+
+The full modal-block reference and the `ACTIONS` schema live at
+`specs/005-onboarding-modal/contracts/onboarding-block.md` and
+`specs/005-onboarding-modal/contracts/actions-array.md`. Treat those as the
+binding source of truth.

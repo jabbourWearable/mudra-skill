@@ -485,6 +485,7 @@
 
       document.addEventListener('DOMContentLoaded', function () {
         const options = new xb.Options();
+        options.simulator.instructions.enabled = false;
         options.enableUI();
         options.setAppTitle('Spatial UI');
         xb.add(new MainScript());

@@ -903,6 +903,103 @@ toggle does NOT relax this rule. Additional XOR rules: `gesture` and
 
 ---
 
+## Onboarding Modal (mandatory) — feature 005-onboarding-modal
+
+Every generated app MUST ship a first-run onboarding modal that greets the
+user, lists every action the app supports, and shows two control hints per
+action: the **Mudra** trigger (canonical signal) and the **Manual** trigger
+(keyboard / mouse). The modal closes via `×`, the **Got it** button, or
+`Escape`, and reopens via a small floating `?` icon.
+
+The modal block (markup + CSS + JS) is **fixed** — copy it verbatim from the
+canonical baseline `mudra-ultimate-template.html` (look for the `=== Onboarding
+modal — feature 005-onboarding-modal ===` separator comments in both the
+`<style>` block and at the end of `<body>`). The ONLY parts you may change
+per generated app are:
+
+1. **The `ACTIONS` constant** inside the modal's inline `<script>` IIFE.
+   Populate one row per user-triggerable action this app actually implements.
+2. **Optionally** the `data-app-name="..."` attribute on `#mudra-onboarding`
+   when the filename derivation would mis-capitalize an acronym (e.g.,
+   `data-app-name="AR Menu"` for `ar-menu.html`).
+
+**Nothing else in the block may differ** — same markup, same class names,
+same CSS, same dismiss/reopen wiring. Two generated apps must be byte-
+identical inside the modal block aside from `ACTIONS` and `data-app-name`.
+
+### `ACTIONS` shape
+
+```js
+const ACTIONS = [
+  { label: "Trigger pad",      mudra: "gesture: pinch",         manual: "Space" },
+  { label: "Adjust volume",    mudra: "pressure (thumb-index)", manual: "[ / ]" },
+  { label: "Cycle pad bank",   mudra: "gesture: thumb-tap",     manual: "Tab" },
+];
+```
+
+Each entry has three fields:
+
+- **`label`** (required, string) — the **behavior** in plain English ("Trigger
+  pad", "Move pointer", "Pause game"). NOT the control name. "Pinch" is not a
+  label — "Trigger sample" is.
+- **`mudra`** (string OR `null`) — the canonical Mudra trigger. Must begin
+  with one of the nine canonical signal names: `gesture`, `button`,
+  `pressure`, `navigation`, `nav_direction`, `imu_acc`, `imu_gyro`, `snc`,
+  `battery`. Optionally followed by `:` + qualifier or a parenthetical:
+  `"gesture: pinch"`, `"pressure (thumb-index)"`, `"navigation: swipe-left"`,
+  `"nav_direction: up"`, `"imu_acc (tilt)"`, `"button: hold"`, `"snc"`. Use
+  `null` only when the action genuinely has no Mudra trigger. Renaming a
+  canonical signal (e.g., `"squeeze"` instead of `"pressure"`) is forbidden
+  — Constitution II.
+- **`manual`** (string OR `null`) — the keyboard / mouse fallback exactly as
+  it appears in this app's simulator panel. Use the project conventions:
+  `"Space"`, `"Shift + ←"`, `"[ / ]"`, `"← / →"`, `"W A S D"`, `"left-click"`,
+  `"right-click + drag"`. Use `null` only when there is no manual fallback.
+
+### Cross-row invariants (REQUIRED — verify before emitting)
+
+For the generated app's `ACTIONS` array:
+
+- At least one of `mudra` / `manual` is non-null on every row.
+- No two rows share the same `manual` value (no keyboard collisions).
+- No two rows share the same effective `mudra` trigger.
+- Every keyboard shortcut wired up in this app's keyboard handler appears as
+  `manual` on exactly one row.
+- Every signal subscription this app makes appears as `mudra` on exactly one
+  row.
+- No row references a control the app does not actually wire up (no
+  orphans).
+
+### Anti-patterns (will fail review)
+
+- ❌ `mudra: "Pinch"` — must be `"gesture: pinch"`.
+- ❌ `mudra: "squeeze"` — renamed; use `"pressure (thumb-index)"`.
+- ❌ A row with `mudra: null, manual: null` — meaningless, drop it.
+- ❌ `label: "Press Space"` — that's a control, not a behavior. Use
+  `label: "Fire"`.
+- ❌ Two rows with `manual: "Space"` — keyboard collision.
+- ❌ A `manual` shortcut not wired up in the keyboard handler — orphan.
+- ❌ A signal subscription with no row referencing it — missing.
+
+### Process
+
+When generating a new app:
+
+1. Inventory every distinct user-triggerable action this app implements.
+2. For each, look up its Mudra trigger in the signal subscriptions and its
+   keyboard / mouse trigger in the keyboard handler.
+3. Compose one `ACTIONS` row per action with a behavior-style label.
+4. Verify the cross-row invariants above.
+5. Replace the placeholder `ACTIONS = [];` line in the modal's inline
+   `<script>` with the populated array. Touch nothing else in the block.
+
+The full modal-block reference and the `ACTIONS` schema live in the spec at
+`specs/005-onboarding-modal/contracts/onboarding-block.md` and
+`specs/005-onboarding-modal/contracts/actions-array.md`. Treat those as the
+binding source of truth if anything here is ambiguous.
+
+---
+
 ## Signal Inference Reference
 
 Use this as the default behavior for intent-to-signal mapping.
