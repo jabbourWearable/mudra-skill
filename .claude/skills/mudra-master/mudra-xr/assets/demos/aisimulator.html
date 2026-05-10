@@ -776,6 +776,7 @@ class AISimulator extends xb.Script {
 
 // --- main ---
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.simulator.geminiLivePanel.enabled = true;
 options.depth.enabled = true;
 options.depth.depthTexture.enabled = true;

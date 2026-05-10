@@ -320,6 +320,7 @@ class GeminiIcebreakers extends xb.Script {
 }
 
 const options = new xb.Options({antialias: true, reticles: {enabled: true}, visualizeRays: true});
+options.simulator.instructions.enabled = false;
 options.enableAI();
 options.enableCamera();
 

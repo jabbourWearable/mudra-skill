@@ -226,6 +226,7 @@ class WalkthroughManager extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.reticles.enabled = false;
   options.hands.enabled = true;
   options.hands.visualization = true;

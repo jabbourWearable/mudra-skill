@@ -1,6 +1,6 @@
 ---
 name: mudra-xr
-version: 2.0.0
+version: 2.1.0
 description: Generate a single-file Mudra-controlled 3D/XR app using XR Blocks. Use when the user describes a 3D, XR, VR, or AR experience controlled by the Mudra Band.
 ---
 
@@ -136,22 +136,29 @@ Pick the highest-scoring row. Ties resolved by:
 Pick **exactly one** background from the 5-row catalog in Section 14 of `references/promt.md`:
 `starfield`, `gradient_sky`, `solid_studio`, `grid_cyber`, `skybox_texture`.
 
-**Inline override**: if the prompt contains `[bg=<id>]` (e.g., `[bg=starfield]`), use it verbatim.
+Selection is **vibe-based** — read the prompt's mood and concept and pick the
+row whose `use_case` fits best. There is no scoring algorithm.
 
-**Explicit user preference**: if the prompt contains an obvious background phrase
-("starfield", "sunset sky", "cyber grid", "in the forest"), pick the matching row regardless of scoring.
+Follow Section 14's rules, in priority order:
 
-**Keyword scoring** (no override, no explicit phrase): use Section 14's scoring —
-`+2` per keyword match in the prompt, `+1` for signal fit, `+1` for template pairing.
-Tie-break: `solid_studio` → `starfield` → `gradient_sky` → `grid_cyber` → `skybox_texture`.
-If every row scores 0, default to `solid_studio`.
+1. **Inline override** `[bg=<id>]` — use verbatim, no inference.
+2. **Explicit phrase** in the prompt ("starfield", "sunset sky", "cyber grid", "in the forest", "synthwave") — pick the matching row.
+3. **Vibe match** — otherwise judge from the prompt:
+   - Calm / meditative / atmospheric / time-of-day → `gradient_sky`
+   - Space / cosmos / abstract objects / minimal stage → `starfield`
+   - UI panels / menus / dashboards / clean product showcase → `solid_studio`
+   - Game / arcade / cyberpunk / synthwave / neon → `grid_cyber`
+   - Outdoor / photoreal / immersive panorama → `skybox_texture`
+4. **`solid_studio` is reserved for UI-first scenes only.** Do not use it as a generic fallback — it's visually flat by design.
+5. **When undecidable**, prefer `gradient_sky` over `solid_studio`. Never default to `solid_studio` for a non-UI prompt.
 
 **Examples**:
 - "solar system" → `starfield`
-- "spatial menu" / "ui panel" → `solid_studio`
-- "cyberpunk dashboard" → `grid_cyber`
-- "sunset meditation" → `gradient_sky`
+- "meditation timer" → `gradient_sky`
+- "spatial menu" / "ui dashboard" → `solid_studio`
+- "cyberpunk drone game" → `grid_cyber`
 - "forest walkthrough" → `skybox_texture`
+- "a counter / a tool" (no clear vibe) → `gradient_sky` (not `solid_studio`)
 
 ### 6. Adapt the template with Mudra bindings
 
@@ -162,6 +169,9 @@ Starting from the seed template HTML:
 2. Instantiate `mudra` at module scope. Do NOT auto-connect — Manual is the default.
 3. Copy the chosen `applyBackground_<id>()` method body verbatim from Section 14 into the `xb.Script` subclass.
 4. Call `this.applyBackground_<id>()` as the **first line** of `init()` — before lights, meshes, or Mudra wiring.
+4a. Wire the **XR Blocks room** behavior per Section 14's catalog:
+   - For `starfield`, `gradient_sky`, `grid_cyber`, `skybox_texture` (immersive rows) — add `options.simulator.scenePath = null;` in the entry point, before `xb.init(options)`. This hides XR Blocks' default room so the dome is the full environment.
+   - For `solid_studio` — do **not** set `scenePath`. The default room provides UI-friendly spatial grounding behind the studio dome and floor.
 5. Call `mudra.subscribe('<signal>')` for every required signal inside `init()`.
 6. Wire `mudra.on('<signal>', handler)` for each subscribed signal using the binding
    patterns from Section 11 of promt.md.
@@ -211,7 +221,8 @@ Print the absolute path to the written file and a one-line summary:
 - IMU+Biometric bundle: `imu_acc`, `imu_gyro`, `snc` always subscribed together — never partially
 - `gesture` and `pressure` are mutually exclusive — never combine them
 - Free-combining signals (one or the other, not both): `gesture` OR `pressure`, plus `button`, `battery`
-- **Navigation sensitivity is gentle by default**: sim button + keyboard arrows emit `±3` per event; cursor multiplier on inbound `delta_x`/`delta_y` is `0.002`. Raise only when the prompt explicitly asks for fast/snappy movement. See Section 6 + Section 11 of `references/promt.md`.
+- **Navigation sensitivity is gentle by default**: sim button + keyboard `I`/`J`/`K`/`L` emit `±3` per event; cursor multiplier on inbound `delta_x`/`delta_y` is `0.002`. Raise only when the prompt explicitly asks for fast/snappy movement. See Section 6 + Section 11 of `references/promt.md`.
+- **Reserved for XR Blocks desktop simulator** — Mudra never claims these: `W`/`A`/`S`/`D` and arrow keys (camera walk), `Q`/`E` (roll/vertical), `R` (reset), right-click drag (orbit), mouse wheel (zoom). Mudra navigation uses `I`/`J`/`K`/`L`; Mudra IMU uses `U`/`O`/`M`/`N`. See Section 6 of `references/promt.md`.
 - Keyboard handlers: `{ capture: true }` + `stopPropagation()` on Mudra-claimed keys
 - Import map: exact pinned versions only — no `@latest`
 - Output: one `.html` file in `preview/`, zero external local references

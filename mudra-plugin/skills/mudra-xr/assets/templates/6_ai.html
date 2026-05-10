@@ -132,6 +132,7 @@ class GeminiQueryManager extends xb.Script {
 }
 
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 options.enableUI();
 options.enableAI();
 

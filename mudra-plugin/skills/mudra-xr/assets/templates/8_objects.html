@@ -72,6 +72,7 @@ class MainScript extends xb.Script {
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options();
 
+  options.simulator.instructions.enabled = false;
   // AI is required for the object detection backend. Please set your
   options.enableAI();
 

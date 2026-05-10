@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modelViewerScene = new ModelViewerScene();
   xb.add(modelViewerScene);
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.simulator.instructions.customInstructions = [
     {
       header: html`<h1>Model Viewer</h1>`,

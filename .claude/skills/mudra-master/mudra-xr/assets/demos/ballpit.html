@@ -252,6 +252,7 @@ const useSceneMesh = xb.getUrlParamBool('scenemesh', false);
 const sceneMeshDebug = xb.getUrlParamBool('scenemeshdebug', false);
 
 const options = new xb.Options();
+options.simulator.instructions.enabled = false;
 if (useSceneMesh) {
   options.world.enableMeshDetection();
   options.world.meshes.showDebugVisualizations = sceneMeshDebug;

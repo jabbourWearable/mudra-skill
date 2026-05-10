@@ -448,6 +448,7 @@ const options = new xb.Options({
   hands: {enabled: true, visualization: false},
   simulator: {defaultMode: xb.SimulatorMode.POSE},
 });
+options.simulator.instructions.enabled = false;
 
 async function start() {
   options.setAppTitle('Custom Gestures');

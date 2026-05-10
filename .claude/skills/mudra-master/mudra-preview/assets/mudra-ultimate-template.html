@@ -252,6 +252,63 @@
       .signal-grid { grid-template-columns: 1fr 1fr; }
       .stage { min-height: 240px; }
     }
+
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    .mudra-onb {
+      border: none;
+      padding: 0;
+      border-radius: 14px;
+      width: min(560px, 92vw);
+      max-height: min(82vh, 720px);
+      background: #fff;
+      color: #111;
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+      overflow: hidden;
+    }
+    .mudra-onb::backdrop { background: rgba(0, 0, 0, .55); }
+    .mudra-onb__head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 8px;
+    }
+    .mudra-onb__brand { display: inline-flex; align-items: center; gap: 8px; }
+    .mudra-onb__logo { display: block; width: 28px; height: 28px; flex: none; }
+    .mudra-onb__wordmark {
+      font-size: 12px; font-weight: 700; letter-spacing: .22em;
+      color: #0d9488; text-transform: uppercase;
+    }
+    .mudra-onb__title {
+      margin: 0; padding: 0 22px 14px;
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .mudra-onb__close {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: none; background: #1a1a1a; color: #fff;
+      width: 32px; height: 32px; border-radius: 50%;
+      font-size: 22px; line-height: 1; padding: 0; cursor: pointer;
+    }
+    .mudra-onb__body { padding: 4px 22px 8px; max-height: 56vh; overflow-y: auto; }
+    .mudra-onb__lede { margin: 0 0 12px; color: #555; }
+    .mudra-onb__actions { width: 100%; border-collapse: collapse; }
+    .mudra-onb__actions th, .mudra-onb__actions td {
+      text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: top;
+    }
+    .mudra-onb__actions th { font-size: 12px; text-transform: uppercase; color: #777; letter-spacing: .04em; }
+    .mudra-onb__actions td:nth-child(2) { color: #1a73e8; font-weight: 600; }
+    .mudra-onb__actions td:nth-child(3) { color: #444; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .mudra-onb__foot { padding: 14px 22px 20px; text-align: right; }
+    .mudra-onb__continue {
+      border: none; background: #1a1a1a; color: #fff;
+      padding: 9px 18px; border-radius: 999px; font-weight: 600; cursor: pointer;
+    }
+    .mudra-onb__reopen {
+      position: fixed; right: 16px; bottom: 16px; z-index: 9999;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: none; background: #1a1a1a; color: #fff;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    }
+    .mudra-onb--hidden, .mudra-onb__reopen--hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -724,6 +781,111 @@
       if (!Number.isFinite(value)) return 0;
       return clamp(value, 0, 1);
     }
+  </script>
+
+  <!-- ============================================================== -->
+  <!--  Onboarding modal — feature 005-onboarding-modal                -->
+  <!--  DO NOT modify this block. Per-app variation lives only in      -->
+  <!--  the ACTIONS constant below and (optionally) the data-app-name  -->
+  <!--  attribute on #mudra-onboarding.                                -->
+  <!-- ============================================================== -->
+  <dialog id="mudra-onboarding" class="mudra-onb" data-app-name="">
+    <header class="mudra-onb__head">
+      <div class="mudra-onb__brand">
+        <svg class="mudra-onb__logo" viewBox="0 0 32 32" aria-hidden="true">
+          <ellipse cx="16" cy="16" rx="13" ry="9" fill="none" stroke="#0d9488" stroke-width="2"/>
+          <circle cx="11" cy="16" r="1.6" fill="#14b8a6"/>
+          <circle cx="16" cy="16" r="1.6" fill="#14b8a6"/>
+          <circle cx="21" cy="16" r="1.6" fill="#14b8a6"/>
+        </svg>
+        <span class="mudra-onb__wordmark">MUDRA</span>
+      </div>
+      <button type="button" class="mudra-onb__close" aria-label="Close">×</button>
+    </header>
+    <h2 class="mudra-onb__title">Welcome to <span class="mudra-onb__name"></span></h2>
+    <section class="mudra-onb__body">
+      <p class="mudra-onb__lede">Use the Mudra Band — or your keyboard — to control this app.</p>
+      <table class="mudra-onb__actions">
+        <thead><tr><th>Action</th><th>Mudra</th><th>Manual</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <footer class="mudra-onb__foot">
+      <button type="button" class="mudra-onb__continue">Got it</button>
+    </footer>
+  </dialog>
+  <button type="button" id="mudra-onboarding-help" class="mudra-onb__reopen" aria-label="Show controls">?</button>
+
+  <script>
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    (() => {
+      // ACTIONS — the ONLY per-app variation in this block.
+      // The skill replaces this constant at generation time. See
+      // contracts/actions-array.md for shape and rules.
+      const ACTIONS = [
+        { label: "Tap to interact",  mudra: "gesture: pinch",         manual: "Space" },
+        { label: "Hold to select",   mudra: "button: hold",           manual: "Shift" },
+        { label: "Adjust pressure",  mudra: "pressure (thumb-index)", manual: "[ / ]" },
+        { label: "Move pointer",     mudra: "navigation: cursor",     manual: "Arrow keys" },
+      ];
+
+      const dialog = document.getElementById("mudra-onboarding");
+      const reopen = document.getElementById("mudra-onboarding-help");
+      if (!dialog || !reopen) return;
+
+      // 1. Resolve title (data-app-name override → filename derivation → fallback).
+      const nameEl = dialog.querySelector(".mudra-onb__name");
+      const override = dialog.dataset.appName && dialog.dataset.appName.trim();
+      if (override) {
+        nameEl.textContent = override;
+      } else {
+        const base = (location.pathname.split("/").pop() || "").replace(/\.html?$/i, "");
+        const pretty = base.replace(/[-_]+/g, " ").trim()
+          .split(/\s+/).map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : "").join(" ");
+        nameEl.textContent = pretty || "Mudra App";
+      }
+
+      // 2. Populate action rows.
+      const tbody = dialog.querySelector(".mudra-onb__actions tbody");
+      ACTIONS.forEach(a => {
+        if (a.mudra == null && a.manual == null) return; // defensive
+        const tr = document.createElement("tr");
+        const td = (text) => { const c = document.createElement("td"); c.textContent = text; return c; };
+        tr.appendChild(td(a.label));
+        tr.appendChild(td(a.mudra == null ? "—" : a.mudra));
+        tr.appendChild(td(a.manual == null ? "—" : a.manual));
+        tbody.appendChild(tr);
+      });
+
+      // 3. Wire dismiss + reopen.
+      const close = () => dialog.close();
+      dialog.querySelector(".mudra-onb__close").addEventListener("click", close);
+      dialog.querySelector(".mudra-onb__continue").addEventListener("click", close);
+      reopen.addEventListener("click", () => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      // 4. Auto-open on first paint.
+      requestAnimationFrame(() => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      // 5. Hide in immersive XR (mudra-xr only — no-op for 2D apps).
+      //    XR Blocks fires `xrsession-start` / `xrsession-end` on the renderer.
+      //    We listen at window level for any of the standard event names so the
+      //    same block works in both skills without forking.
+      const setHidden = (h) => {
+        dialog.classList.toggle("mudra-onb--hidden", h);
+        reopen.classList.toggle("mudra-onb__reopen--hidden", h);
+        if (h && dialog.open) dialog.close();
+      };
+      ["xrsession-start", "vr-session-start", "ar-session-start"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(true)));
+      ["xrsession-end", "vr-session-end", "ar-session-end"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(false)));
+    })();
   </script>
 </body>
 </html>

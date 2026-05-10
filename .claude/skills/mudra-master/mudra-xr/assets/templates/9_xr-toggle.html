@@ -80,6 +80,7 @@ class MainScript extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options().enableXRTransitions();
+  options.simulator.instructions.enabled = false;
   xb.add(new MainScript());
   xb.init(options);
 });

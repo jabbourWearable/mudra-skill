@@ -376,6 +376,7 @@ class SoundDemoScript extends xb.Script {
 
 document.addEventListener('DOMContentLoaded', function () {
   const options = new xb.Options();
+  options.simulator.instructions.enabled = false;
   options.reticles.enabled = true;
   options.controllers.visualizeRays = true;
   options.setAppTitle('XR Sound');
