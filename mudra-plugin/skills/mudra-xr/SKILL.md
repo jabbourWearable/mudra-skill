@@ -1,6 +1,6 @@
 ---
 name: mudra-xr
-version: 0.1.0
+version: 2.0.0
 description: Generate a single-file Mudra-controlled 3D/XR app using XR Blocks. Use when the user describes a 3D, XR, VR, or AR experience controlled by the Mudra Band.
 ---
 
@@ -8,6 +8,37 @@ description: Generate a single-file Mudra-controlled 3D/XR app using XR Blocks. 
 
 Generate a complete, working single-file HTML 3D/XR app controlled by Mudra Band signals.
 The output runs in any modern Chromium browser — no build step, no server, no headset required.
+
+**Mandatory feature (v0.3.0):** Every generated app MUST include a
+Manual/Mudra **Mode toggle** as defined in `references/promt.md`
+§ Section 15 "Mode Toggle (Manual / Mudra) — Required". Manual is the
+default; Mudra opens a single WebSocket lazily and disables the
+simulator panel so signals come only from the band.
+
+**Mandatory feature (v0.3.0):** Connection state MUST reflect the
+**band**, not the WebSocket. The Companion service accepts socket
+connections even when no band is paired, so flipping to "Connected" on
+`ws.onopen` is a lie. Every generated app MUST send
+`{command:"get_status"}` on open and poll it every 2 s while in Mudra
+mode, and only show "Connected" when the response has
+`data.device.state === "connected"`. See `references/promt.md`
+§ "Disconnect detection — band state via `get_status` polling (mandatory)".
+
+**No disconnect overlay:** Do **not** render a "Band disconnected"
+overlay, toast, or any other separate disconnect alert. Connection
+state is communicated **only** through the existing connection-status
+pill (`Manual` / `Connecting…` / `Connected` / `Disconnected`).
+
+**Branding (v0.3.0):** The footer/badge text MUST be exactly
+**"Created by Mudra"** — never "Created with Mudra Studio",
+"Powered by Mudra", or any other variant. See § Section 16.
+
+**Simulator panel buttons must be contextual.** Render only the
+sub-actions the app actually handles. If the app maps `nav_direction` to
+Up/Down only, omit Left/Right/Roll L/Roll R. If `gesture` only handles
+`tap`, omit Twist/2Twist/2Tap. See § Section 5.
+
+The canonical protocol is in `references/agent_protocol.json` (v2.0).
 
 ## Invocation
 
@@ -41,16 +72,21 @@ If neither tag is present, infer them from the prompt language (Step 3).
 ### 3. Infer Mudra signals
 
 Map the user's intent to the required Mudra signals using the Signal Inference Reference
-in `references/promt.md`. Enforce motion-mode exclusivity (Section 8 of promt.md):
+in `references/promt.md`. Enforce all grouping rules (Section 8 of promt.md):
 
-- Discrete actions → `gesture` or `button`
-- Analog control → `pressure`
+- Discrete actions → `gesture` OR `button` (never both gesture+pressure)
+- Analog control → `pressure` OR `button` (never both gesture+pressure)
 - Continuous directional movement → `navigation` + `button` (Pointer mode)
 - Discrete directional swipes → `nav_direction` (Direction mode)
-- Tilt / orientation → `imu_acc` + `imu_gyro` (IMU mode)
-- Biometric → `snc`
+- Tilt / orientation / biometrics → `imu_acc` + `imu_gyro` + `snc` (always all three together — IMU+Biometric bundle)
 
-If the prompt maps to two motion modes, ask one disambiguation question — do not
+**Critical grouping rules:**
+1. `gesture` and `pressure` are mutually exclusive — pick one.
+2. `navigation` and `nav_direction` are mutually exclusive — pick one.
+3. The IMU+Biometric bundle (`imu_acc` + `imu_gyro` + `snc`) cannot combine with `navigation` or `nav_direction`.
+4. `imu_acc`, `imu_gyro`, and `snc` are always subscribed together — using any one requires all three.
+
+If the prompt maps to two incompatible groups, ask one disambiguation question — do not
 auto-pick silently. If no motion mode is needed, use mode = none.
 
 ### 4. Pick motion mode
@@ -120,19 +156,32 @@ If every row scores 0, default to `solid_studio`.
 ### 6. Adapt the template with Mudra bindings
 
 Starting from the seed template HTML:
-1. Add the `MudraClient` class (Section 4 of promt.md) verbatim inside the `<script type="module">`.
-2. Instantiate `mudra` at module scope.
+1. Add the `MudraClient` class (Section 4 of promt.md, with the Section 15
+   extensions: no auto-connect; `setMode()`-driven; passive mock; 2 s
+   `get_status` poll in Mudra mode) verbatim inside the `<script type="module">`.
+2. Instantiate `mudra` at module scope. Do NOT auto-connect — Manual is the default.
 3. Copy the chosen `applyBackground_<id>()` method body verbatim from Section 14 into the `xb.Script` subclass.
 4. Call `this.applyBackground_<id>()` as the **first line** of `init()` — before lights, meshes, or Mudra wiring.
 5. Call `mudra.subscribe('<signal>')` for every required signal inside `init()`.
 6. Wire `mudra.on('<signal>', handler)` for each subscribed signal using the binding
    patterns from Section 11 of promt.md.
-7. Add the simulator panel `<div id="mudra-sim">` (Section 5) with one button group
-   per subscribed signal.
-8. Add the status indicator `<div id="mudra-status">` (Section 7) wired to `mudra.on('_status', …)`.
-9. Add the keyboard handler `window.addEventListener('keydown', …, { capture: true })`
-   (Section 6) for every subscribed signal.
-10. Remove import-map entries for dependencies the adapted app does not use.
+7. Add the **Mode toggle** `<div id="mode-toggle">` (Section 15) with
+   **Manual** + **Mudra** buttons. Manual is the default. Wire both
+   buttons to atomically switch via `mudra.setMode(...)`.
+8. Add the simulator panel `<div id="mudra-sim">` (Section 5) with one
+   button group **only for the sub-actions actually handled by the app**
+   (e.g., omit `Roll L`/`Roll R` if `nav_direction` only handles
+   Up/Down; omit `Twist`/`2Twist` if `gesture` only handles `tap`). The
+   panel is greyed and `pointer-events: none` while in Mudra mode.
+9. Add the status indicator `<div id="mudra-status">` (Section 15)
+   wired to `mudra.on('_status', …)` with the four states `Manual` /
+   `Connecting…` / `Connected` / `Disconnected`. **Never render a
+   separate disconnect overlay/banner/toast.**
+10. Add the keyboard handler `window.addEventListener('keydown', …, { capture: true })`
+    (Section 6) for every subscribed signal.
+11. Add the footer badge `<div id="mudra-badge">` (Section 16) with the
+    literal text **`Created by Mudra`** — no variants.
+12. Remove import-map entries for dependencies the adapted app does not use.
 
 ### 7. Run the pre-write checklist
 
@@ -158,8 +207,11 @@ Print the absolute path to the written file and a one-line summary:
 - WebSocket endpoint: `ws://127.0.0.1:8766`
 - Always use `MudraClient` — never raw `new WebSocket(...)`
 - Subscribe one signal per command: `{ command: 'subscribe', signal: '<name>' }`
-- Motion modes are mutually exclusive: Pointer (`navigation`+`button`) / Direction (`nav_direction`) / IMU (`imu_acc`+`imu_gyro`)
-- Free-combining signals: `gesture`, `pressure`, `snc`, `battery`
+- Motion modes are mutually exclusive: Pointer (`navigation`+`button`) / Direction (`nav_direction`) / IMU+Biometric (`imu_acc`+`imu_gyro`+`snc`)
+- IMU+Biometric bundle: `imu_acc`, `imu_gyro`, `snc` always subscribed together — never partially
+- `gesture` and `pressure` are mutually exclusive — never combine them
+- Free-combining signals (one or the other, not both): `gesture` OR `pressure`, plus `button`, `battery`
+- **Navigation sensitivity is gentle by default**: sim button + keyboard arrows emit `±3` per event; cursor multiplier on inbound `delta_x`/`delta_y` is `0.002`. Raise only when the prompt explicitly asks for fast/snappy movement. See Section 6 + Section 11 of `references/promt.md`.
 - Keyboard handlers: `{ capture: true }` + `stopPropagation()` on Mudra-claimed keys
 - Import map: exact pinned versions only — no `@latest`
 - Output: one `.html` file in `preview/`, zero external local references
