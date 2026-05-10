@@ -1,6 +1,6 @@
 ---
 name: mudra-preview
-version: 1.0.0
+version: 2.0.0
 description: Generate a working Mudra Band interactive app preview as a single-file HTML. Use when the user describes a Mudra-controlled experience (gesture, pressure, navigation, IMU, SNC), wants to prototype a Mudra Companion app, or asks to build/preview a Mudra app.
 ---
 
@@ -8,11 +8,37 @@ description: Generate a working Mudra Band interactive app preview as a single-f
 
 Generate a complete, working single-file HTML app controlled by Mudra Band signals.
 
+**Mandatory feature (v1.1.0, updated v1.4.0):** Every generated app MUST
+include a Manual/Mudra **Mode toggle** as defined in `references/promt.md`
+§ "Mode Toggle (Manual / Mudra) — Required". Manual is the default; Mudra
+opens a single WebSocket lazily and disables the simulator panel so signals
+come only from the band.
+
+**Removed in v1.4.0:** Do **not** render a "Band disconnected" overlay,
+toast, or any other separate disconnect alert. Connection state is
+communicated **only** through the existing connection-status pill (which
+shows "Connecting…" / "Connected" / "Disconnected"). No extra notice,
+no banner, no modal.
+
+**Branding (v1.4.0):** The footer/badge text MUST be exactly
+**"Created by Mudra"** — never "Created with Mudra Studio" or any
+other variant.
+
+**Mandatory feature (v1.2.0):** Connection state MUST reflect the **band**, not
+the WebSocket. The Companion service accepts socket connections even when no
+band is paired, so flipping to "Connected" on `ws.onopen` is a lie. Every
+generated app MUST send `{command:"get_status"}` on open and poll it every
+2 s while in Mudra mode, and only show "Connected" when the response has
+`data.device.state === "connected"`. See `references/promt.md` §
+"Disconnect detection — band state via `get_status` polling (mandatory)".
+
+The canonical protocol is in `references/agent_protocol.json` (v2.0).
+
 ## Steps
 
-1. **Read the full instructions** from `references/promt.md` inside the skill base directory. That file contains the complete protocol contract, signal compatibility rules, mock WebSocket implementation, build defaults, and sample catalog — follow all of it.
+1. **Read the full instructions** from `references/promt.md` inside the skill base directory. That file contains the complete protocol contract, signal compatibility rules, the Mode Toggle architecture (mandatory), build defaults, and sample catalog — follow all of it.
 
-2. **Infer intent** from the user's description (or the args passed to this skill). Fill gaps with smart defaults. Ask only if there is genuine ambiguity (e.g., navigation vs IMU conflict).
+2. **Infer intent** from the user's description (or the args passed to this skill). Fill gaps with smart defaults. Ask only if there is genuine ambiguity (e.g., `gesture` vs `pressure`, `navigation` vs `nav_direction`, or directional motion vs IMU+Biometric bundle).
 
 3. **Select the best-matching template** from `assets/` inside the skill base directory. Use the selection rule from `references/promt.md` (motion mode → interaction pattern → signal overlap).
 
@@ -61,10 +87,55 @@ Every generated app MUST include a **compact, always-visible simulator panel** w
 
 6. **Report the file path** so the user can open it in a browser immediately.
 
+## Default Signal Set (v1.3.0 — Required)
+
+Unless the user explicitly asks for a different signal, every generated
+app MUST restrict itself to **at most these signals** (subject to the
+exclusivity rules below):
+
+1. **One** of `pressure` **or** `gesture` (filtered to `tap` and/or
+   `double_tap`) — never both. `gesture` and `pressure` are mutually
+   exclusive.
+2. **One** directional signal — either `nav_direction` **or**
+   `navigation`, never both.
+
+Rules:
+
+- Drop any of the above if the concept does not need it (e.g., a pure
+  tap-counter subscribes to `gesture` only and skips the directional
+  signal).
+- **`gesture` and `pressure` are mutually exclusive** — pick one
+  interaction model per app. Tap/twist concepts → `gesture`. Analog
+  concepts (volume, brush, throttle) → `pressure`.
+- `nav_direction` and `navigation` are **mutually exclusive per app** —
+  pick the one that fits the interaction (discrete swipes →
+  `nav_direction`; continuous cursor/scroll → `navigation`). Never wire
+  both into the same app.
+- **IMU+Biometric bundle (`imu_acc` + `imu_gyro` + `snc`) is
+  inseparable.** If the concept needs any one of them, subscribe to all
+  three. The bundle is **mutually exclusive** with `navigation` and
+  `nav_direction` — pick directional motion OR the IMU+Biometric bundle,
+  never both.
+- Other gesture subtypes (`twist`, `double_twist`, etc.) and other
+  signals (`button`, `imu_acc`, `imu_gyro`, `snc`, `battery`) are
+  **off by default**. Only include them when the user's prompt names
+  them, names a synonym from the Signal Inference table in
+  `references/promt.md` § "Signal Inference Reference", or describes
+  an interaction that genuinely cannot be expressed with the defaults
+  (e.g., "tilt to steer" → IMU+Biometric bundle; "hold to charge" →
+  `button`).
+- The simulator panel must mirror whichever subset the app actually
+  subscribes to — do not render buttons for signals that are not wired.
+
 ## Quick Reference
 
-- WebSocket endpoint: `ws://127.0.0.1:8766`
-- Always wrap with `MudraWebSocket` — never raw `new WebSocket(...)`
-- Subscribe one signal per command: `{ "command": "subscribe", "signal": "<name>" }`
-- Motion modes are mutually exclusive: Pointer (`navigation`+`button`) / Direction (`nav_direction`) / IMU (`imu_acc`+`imu_gyro`)
-- All other signals (`gesture`, `pressure`, `snc`, `battery`) combine freely with any mode
+- WebSocket endpoint: `ws://127.0.0.1:8766` (bare URL — NOT `/events`)
+- Mode toggle (Manual / Mudra) is **mandatory** in every generated app — see `references/promt.md` § "Mode Toggle (Manual / Mudra) — Required"
+- Lazy WS lifecycle: open on Manual→Mudra, close on Mudra→Manual. Manual mode opens NO WebSocket.
+- Subscribe one signal per command: `{ "command": "subscribe", "signal": "<name>" }` — singular `signal`, never `signals`, never an array
+- Motion modes are mutually exclusive: Pointer (`navigation`+`button`) / Direction (`nav_direction`) / IMU+Biometric (`imu_acc`+`imu_gyro`+`snc`, always all three together)
+- IMU+Biometric bundle: `imu_acc`, `imu_gyro`, `snc` always subscribed together — never partially. The bundle is mutually exclusive with `navigation` and `nav_direction`.
+- `gesture` and `pressure` are mutually exclusive — never combine them
+- `button` and `battery` combine freely (subject to the Pointer XOR — `button` belongs to Pointer mode and never combines with `nav_direction`)
+- **Navigation sensitivity is gentle by default**: keyboard `step = 3`, sim button `±3`, cursor multiplier `0.002`. Raise only when the prompt explicitly asks for fast/snappy movement. See `references/promt.md` § "Navigation sensitivity defaults".
+- Canonical protocol JSON: `references/agent_protocol.json` (v2.0)
