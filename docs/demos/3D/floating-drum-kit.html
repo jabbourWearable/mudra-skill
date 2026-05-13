@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Floating Drum Kit | Mudra XR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "lit": "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js",
+          "lit/": "https://esm.run/lit@3/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/addons/"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg: #15121f;
+        --card: #221c2eee;
+        --primary: #ffd166;
+        --accent: #ef476f;
+        --text: #f7f3ea;
+        --text-secondary: #a09bb0;
+        --success: #06d6a0;
+        --warning: #ffb84d;
+        --error: #ef476f;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+
+      /* ---------- Top bar (mode toggle + connection pill) ---------- */
+      #topbar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 999px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        z-index: 30;
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+      .mode-toggle {
+        display: inline-flex;
+        gap: 4px;
+        background: var(--bg);
+        padding: 3px;
+        border-radius: 999px;
+        border: 1px solid var(--text-secondary);
+      }
+      .mode-opt {
+        background: transparent;
+        color: var(--text-secondary);
+        border: none;
+        padding: 6px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        font-family: inherit;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .mode-opt.active {
+        background: var(--primary);
+        color: var(--bg);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      }
+      .conn-pill {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        font-family: inherit;
+      }
+      .conn-manual       { background: transparent;    color: var(--text-secondary); border-color: var(--text-secondary); }
+      .conn-connecting   { background: var(--warning); color: var(--bg); }
+      .conn-connected    { background: var(--success); color: var(--bg); }
+      .conn-disconnected { background: var(--error);   color: var(--bg); }
+
+      /* ---------- HUD (theme name) ---------- */
+      #hud {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 10px 22px;
+        border-radius: 999px;
+        z-index: 25;
+        font-family: 'Poppins', system-ui, sans-serif;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        text-align: center;
+        min-width: 220px;
+      }
+      #hud .kit-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 700;
+      }
+      #hud .kit-name {
+        font-size: 18px;
+        color: var(--primary);
+        font-weight: 800;
+        margin-top: 2px;
+      }
+      #hud .next-up {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      #hud .next-up b { color: var(--accent); font-weight: 700; }
+
+      /* ---------- Simulator panel ---------- */
+      #mudra-sim {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 10px;
+        border-radius: 999px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+        z-index: 25;
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+      #mudra-sim .lbl {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0 8px 0 4px;
+      }
+      #mudra-sim .btn {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      #mudra-sim .btn:hover { background: var(--primary); color: var(--bg); border-color: var(--primary); }
+      #mudra-sim .btn:active { transform: scale(0.95); }
+      #mudra-sim.disabled { pointer-events: none; opacity: 0.4; }
+      #mudra-sim.disabled .btn { cursor: not-allowed; }
+
+      /* ---------- Onboarding ---------- */
+      #onboarding-overlay {
+        position: fixed; inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 40;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(4px);
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+      .onboarding-panel {
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        padding: 32px 40px;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        border: 1px solid var(--text-secondary);
+        max-width: 90vw;
+        width: 480px;
+      }
+      .onboarding-panel h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+      }
+      .onboarding-panel p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        line-height: 1.55;
+      }
+      .onboarding-panel .kbd {
+        display: inline-block;
+        background: var(--bg);
+        border: 1px solid var(--text-secondary);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: var(--text);
+        margin: 0 2px;
+      }
+      .onboarding-panel .cta {
+        background: var(--primary);
+        color: var(--bg);
+        border: none;
+        padding: 12px 28px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+        transition: transform 0.15s ease;
+        margin-top: 8px;
+      }
+      .onboarding-panel .cta:hover { transform: translateY(-1px); }
+      .onboarding-panel .cta:active { transform: translateY(1px); }
+
+      /* ---------- Badge ---------- */
+      .mudra-badge {
+        position: fixed;
+        bottom: 56px;
+        right: 14px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        opacity: 0.7;
+        font-family: inherit;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+        z-index: 5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="topbar">
+      <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+        <button id="mode-manual" role="radio" aria-checked="true"  class="mode-opt active">Manual</button>
+        <button id="mode-mudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+      </div>
+      <div id="mudra-status" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+    </div>
+
+    <div id="hud">
+      <div class="kit-label">Kit</div>
+      <div class="kit-name" id="kit-name">Rock</div>
+      <div class="next-up">Next pinch hits <b id="next-drum">Kick</b></div>
+    </div>
+
+    <div id="mudra-sim" aria-label="Mudra signal simulator">
+      <span class="lbl">Gesture</span>
+      <button class="btn" id="sim-tap">Tap</button>
+      <button class="btn" id="sim-2tap">2Tap</button>
+      <button class="btn" id="sim-twist">Twist</button>
+    </div>
+
+    <div id="onboarding-overlay">
+      <div class="onboarding-panel">
+        <h1>🥁 Floating Drum Kit</h1>
+        <p>A floating five-piece kit you play with your Mudra Band — pinches hit drums in sequence, double-tap crashes the cymbal, twist swaps kit themes.</p>
+        <p>
+          Pinch your Mudra Band (or press <span class="kbd">Space</span>) to strike the highlighted drum.
+          Double-tap (<span class="kbd">Shift</span>+<span class="kbd">D</span>) for a crash. Twist (<span class="kbd">T</span>) to switch between Rock, Synth and Jazz.
+        </p>
+        <button id="onboarding-start" class="cta">Drop In</button>
+      </div>
+    </div>
+
+    <div class="mudra-badge">Created by Mudra</div>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import * as xb from 'xrblocks';
+
+      // ------------------------------------------------------------
+      // MudraClient (skill §4 — verbatim)
+      // ------------------------------------------------------------
+      class MudraClient {
+        constructor(url) {
+          this._url = url;
+          this._handlers = {};
+          this._subscriptions = new Set();
+          this._mode = 'manual';
+          this._state = 'idle';
+          this._ws = null;
+          this._statusPoll = null;
+          this._reconnectTimer = null;
+          this._reconnectIdx = 0;
+          this._connToken = 0;
+        }
+        on(signal, fn) { this._handlers[signal] = fn; }
+        subscribe(signal) {
+          this._subscriptions.add(signal);
+          if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+          }
+        }
+        send(cmd) {
+          if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify(cmd));
+          } else if (this._mode === 'manual' && cmd.command === 'trigger_gesture') {
+            this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 1.0, timestamp: Date.now() } });
+          }
+        }
+        setMode(mode) {
+          if (mode !== 'manual' && mode !== 'mudra') return;
+          if (mode === this._mode) return;
+          this._mode = mode;
+          this._connToken++;
+          this._stopStatusPoll();
+          this._clearReconnect();
+          if (this._ws) {
+            try { this._ws.close(); } catch (_) {}
+            this._ws = null;
+          }
+          if (mode === 'manual') {
+            this._setState('idle');
+          } else {
+            this._openSocket();
+          }
+        }
+        emitSynthetic(payload) { this._emit(payload); }
+        get state() { return this._state; }
+        get mode() { return this._mode; }
+
+        _openSocket() {
+          const token = this._connToken;
+          this._setState('connecting');
+          try {
+            const ws = new WebSocket(this._url);
+            this._ws = ws;
+            ws.onopen = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') { try { ws.close(); } catch (_) {} return; }
+              for (const sig of this._subscriptions) {
+                ws.send(JSON.stringify({ command: 'subscribe', signal: sig }));
+              }
+              ws.send(JSON.stringify({ command: 'get_status' }));
+              this._startStatusPoll();
+            };
+            ws.onmessage = (e) => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              let msg; try { msg = JSON.parse(e.data); } catch (_) { return; }
+              if (msg.type === 'status') {
+                const ok = msg.data?.device?.state === 'connected';
+                this._setState(ok ? 'connected' : 'disconnected');
+                return;
+              }
+              if (msg.type === 'connection_status') {
+                if (msg.data?.status === 'disconnected') this._setState('disconnected');
+                else if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+                  this._ws.send(JSON.stringify({ command: 'get_status' }));
+                }
+                return;
+              }
+              this._emit(msg);
+            };
+            ws.onerror = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              this._setState('disconnected');
+              this._stopStatusPoll();
+              this._scheduleReconnect();
+            };
+            ws.onclose = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              this._setState('disconnected');
+              this._stopStatusPoll();
+              this._scheduleReconnect();
+            };
+          } catch (_) {
+            this._setState('disconnected');
+            this._scheduleReconnect();
+          }
+        }
+        _startStatusPoll() {
+          this._stopStatusPoll();
+          this._statusPoll = setInterval(() => {
+            if (this._mode !== 'mudra') { this._stopStatusPoll(); return; }
+            if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+              this._ws.send(JSON.stringify({ command: 'get_status' }));
+            }
+          }, 2000);
+        }
+        _stopStatusPoll() { if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; } }
+        _scheduleReconnect() {
+          this._clearReconnect();
+          const delays = [1000, 2000, 5000, 5000, 5000];
+          const delay = delays[Math.min(this._reconnectIdx, delays.length - 1)];
+          this._reconnectIdx++;
+          const token = this._connToken;
+          this._reconnectTimer = setTimeout(() => {
+            if (token !== this._connToken || this._mode !== 'mudra') return;
+            this._openSocket();
+          }, delay);
+        }
+        _clearReconnect() { if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; } }
+        _setState(s) {
+          if (s === 'connected') this._reconnectIdx = 0;
+          if (s === this._state) return;
+          this._state = s;
+          if (this._handlers['_status']) this._handlers['_status'](s);
+        }
+        _emit(msg) {
+          const h = this._handlers[msg.type];
+          if (h) h(msg.data);
+        }
+      }
+
+      const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+      // ------------------------------------------------------------
+      // Kit themes — drum colors + synth sound profile
+      // ------------------------------------------------------------
+      const KITS = [
+        {
+          name: 'Rock',
+          accent: '#ef476f',
+          shellColor: 0x8b4a2b,
+          rimColor: 0xe6c382,
+          cymbalColor: 0xffd166,
+          ringColor: 0xff6a3d,
+          sounds: {
+            kick:  { kind: 'kick',  freq: 55,  decay: 0.45, level: 1.0 },
+            snare: { kind: 'snare', freq: 220, decay: 0.18, level: 0.85, noise: 0.7 },
+            hat:   { kind: 'hat',   decay: 0.07, level: 0.45 },
+            tom:   { kind: 'tom',   freq: 140, decay: 0.35, level: 0.85 },
+            crash: { kind: 'crash', decay: 1.6, level: 0.9 }
+          }
+        },
+        {
+          name: 'Synth',
+          accent: '#9b5cff',
+          shellColor: 0x21f0ff,
+          rimColor: 0xff34e5,
+          cymbalColor: 0xb388ff,
+          ringColor: 0x00ffe1,
+          sounds: {
+            kick:  { kind: 'kick',  freq: 38,  decay: 0.55, level: 1.0, square: true },
+            snare: { kind: 'snare', freq: 320, decay: 0.22, level: 0.8, noise: 0.5 },
+            hat:   { kind: 'hat',   decay: 0.08, level: 0.4, metallic: true },
+            tom:   { kind: 'tom',   freq: 180, decay: 0.45, level: 0.85, square: true },
+            crash: { kind: 'crash', decay: 2.1, level: 0.85, metallic: true }
+          }
+        },
+        {
+          name: 'Jazz',
+          accent: '#5cc8ff',
+          shellColor: 0x1c2a47,
+          rimColor: 0xf6efd7,
+          cymbalColor: 0xc89b3c,
+          ringColor: 0xf6efd7,
+          sounds: {
+            kick:  { kind: 'kick',  freq: 65,  decay: 0.30, level: 0.85 },
+            snare: { kind: 'snare', freq: 200, decay: 0.13, level: 0.7, noise: 0.55, brushed: true },
+            hat:   { kind: 'hat',   decay: 0.05, level: 0.4, brushed: true },
+            tom:   { kind: 'tom',   freq: 110, decay: 0.28, level: 0.75 },
+            crash: { kind: 'crash', decay: 1.1, level: 0.7, brushed: true }
+          }
+        }
+      ];
+
+      // Round-robin order across the four drums (cymbal is double-tap-only)
+      const ROUND_ROBIN = ['kick', 'snare', 'hat', 'tom'];
+      const PRETTY = { kick: 'Kick', snare: 'Snare', hat: 'Hi-hat', tom: 'Tom', crash: 'Crash' };
+
+      // ------------------------------------------------------------
+      // Web Audio synth
+      // ------------------------------------------------------------
+      let audio = null;
+      function ensureAudio() {
+        if (!audio) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          audio = new Ctx();
+        }
+        if (audio.state === 'suspended') audio.resume();
+        return audio;
+      }
+      function makeNoise(ctx, duration) {
+        const buf = ctx.createBuffer(1, Math.ceil(duration * ctx.sampleRate), ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        return src;
+      }
+      function playSound(profile) {
+        const ctx = ensureAudio();
+        const now = ctx.currentTime;
+        const out = ctx.createGain();
+        out.gain.value = profile.level ?? 0.8;
+        out.connect(ctx.destination);
+
+        if (profile.kind === 'kick') {
+          const osc = ctx.createOscillator();
+          osc.type = profile.square ? 'triangle' : 'sine';
+          const g = ctx.createGain();
+          osc.connect(g); g.connect(out);
+          const f0 = profile.freq, f1 = Math.max(20, profile.freq * 0.4);
+          osc.frequency.setValueAtTime(f0 * 3, now);
+          osc.frequency.exponentialRampToValueAtTime(f1, now + profile.decay * 0.7);
+          g.gain.setValueAtTime(1.0, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          osc.start(now); osc.stop(now + profile.decay + 0.05);
+        } else if (profile.kind === 'snare') {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          const og = ctx.createGain();
+          osc.connect(og); og.connect(out);
+          osc.frequency.setValueAtTime(profile.freq, now);
+          osc.frequency.exponentialRampToValueAtTime(profile.freq * 0.6, now + profile.decay);
+          og.gain.setValueAtTime(0.6, now);
+          og.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          osc.start(now); osc.stop(now + profile.decay + 0.05);
+
+          const noise = makeNoise(ctx, profile.decay + 0.05);
+          const hp = ctx.createBiquadFilter();
+          hp.type = profile.brushed ? 'bandpass' : 'highpass';
+          hp.frequency.value = profile.brushed ? 1500 : 1000;
+          const ng = ctx.createGain();
+          ng.gain.setValueAtTime((profile.noise ?? 0.5) * 1.1, now);
+          ng.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          noise.connect(hp); hp.connect(ng); ng.connect(out);
+          noise.start(now);
+        } else if (profile.kind === 'hat') {
+          const noise = makeNoise(ctx, profile.decay + 0.05);
+          const hp = ctx.createBiquadFilter();
+          hp.type = 'highpass';
+          hp.frequency.value = profile.metallic ? 6000 : (profile.brushed ? 4000 : 7000);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(1.0, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          noise.connect(hp); hp.connect(g); g.connect(out);
+          noise.start(now);
+        } else if (profile.kind === 'tom') {
+          const osc = ctx.createOscillator();
+          osc.type = profile.square ? 'square' : 'sine';
+          const g = ctx.createGain();
+          osc.connect(g); g.connect(out);
+          osc.frequency.setValueAtTime(profile.freq * 1.8, now);
+          osc.frequency.exponentialRampToValueAtTime(profile.freq * 0.7, now + profile.decay * 0.9);
+          g.gain.setValueAtTime(0.9, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          osc.start(now); osc.stop(now + profile.decay + 0.05);
+        } else if (profile.kind === 'crash') {
+          const noise = makeNoise(ctx, profile.decay + 0.1);
+          const hp = ctx.createBiquadFilter();
+          hp.type = profile.metallic ? 'bandpass' : 'highpass';
+          hp.frequency.value = profile.metallic ? 5500 : (profile.brushed ? 5000 : 3500);
+          hp.Q.value = profile.metallic ? 1.4 : 0.8;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(1.0, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + profile.decay);
+          noise.connect(hp); hp.connect(g); g.connect(out);
+          noise.start(now);
+        }
+      }
+
+      // ------------------------------------------------------------
+      // Scene
+      // ------------------------------------------------------------
+      class DrumKit extends xb.Script {
+        init() {
+          // Stage lighting — additive on top of the XR Blocks default room.
+          const key = new THREE.SpotLight(0xffe7b3, 6.0, 8, Math.PI / 5, 0.4, 1.2);
+          key.position.set(0.6, 2.4, -0.4);
+          key.target.position.set(0, 1.3, -1.0);
+          this.add(key, key.target);
+          const rim = new THREE.PointLight(0xff6699, 2.4, 5, 1.2);
+          rim.position.set(-0.8, 1.5, -1.6);
+          this.add(rim);
+          this.add(new THREE.AmbientLight(0x404060, 0.6));
+
+          this.kitIdx = 0;
+          this.kit = KITS[0];
+
+          // Build the floating kit.
+          this.drums = {};
+          const baseY = (xb.user?.height ?? 1.6) - 0.25;
+          const z = -1.2;
+
+          // Kick (center, lowest, biggest)
+          this.drums.kick = this._makeDrum({
+            radius: 0.28, height: 0.32,
+            position: new THREE.Vector3(0.0, baseY - 0.05, z + 0.15),
+            kind: 'kick',
+          });
+          // Snare (front-right, mid)
+          this.drums.snare = this._makeDrum({
+            radius: 0.17, height: 0.13,
+            position: new THREE.Vector3(0.35, baseY + 0.20, z + 0.30),
+            kind: 'snare',
+          });
+          // Hi-hat (front-left, thin metal disc on a shaft)
+          this.drums.hat = this._makeHat({
+            position: new THREE.Vector3(-0.42, baseY + 0.28, z + 0.25),
+          });
+          // Tom (back-left, mid)
+          this.drums.tom = this._makeDrum({
+            radius: 0.155, height: 0.18,
+            position: new THREE.Vector3(-0.18, baseY + 0.30, z - 0.05),
+            kind: 'tom',
+          });
+          // Crash cymbal (above, slightly back)
+          this.drums.crash = this._makeCymbal({
+            radius: 0.27,
+            position: new THREE.Vector3(0.30, baseY + 0.62, z - 0.10),
+          });
+
+          // Focus ring under the next drum.
+          const ringGeom = new THREE.RingGeometry(0.16, 0.21, 48);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: this.kit.ringColor, side: THREE.DoubleSide, transparent: true, opacity: 0.85
+          });
+          this.focusRing = new THREE.Mesh(ringGeom, ringMat);
+          this.focusRing.rotation.x = -Math.PI / 2;
+          this.add(this.focusRing);
+
+          // Ripple pool — short-lived expanding rings & particle bursts.
+          this.ripples = []; // {mesh, life, ttl, scaleEnd}
+          this.particles = []; // {points, velocities, life, ttl}
+
+          this.nextDrumIdx = 0;
+          this._applyKitColors();
+          this._updateFocusRing();
+          this._updateHUD();
+
+          // Mudra wiring (must run after the scene is built).
+          mudra.on('_status', this._onStatus);
+          mudra.on('gesture', (data) => {
+            if (!data || !data.type) return;
+            ensureAudio();
+            if (data.type === 'tap') this._hitNextDrum();
+            else if (data.type === 'double_tap') this._hitDrum('crash');
+            else if (data.type === 'twist') this._cycleKit();
+          });
+          mudra.subscribe('gesture');
+        }
+
+        update() {
+          const dt = xb.getDeltaTime ? xb.getDeltaTime() : 0.016;
+          const t = performance.now() * 0.001;
+
+          // Idle motion on the kit — gentle floating bob & sway.
+          for (const key of Object.keys(this.drums)) {
+            const d = this.drums[key];
+            const phase = d.userData.phase;
+            d.position.y = d.userData.baseY + Math.sin(t * 1.1 + phase) * 0.012;
+            d.rotation.z = Math.sin(t * 0.7 + phase) * 0.025;
+            // Hit reaction
+            if (d.userData.hitT > 0) {
+              d.userData.hitT = Math.max(0, d.userData.hitT - dt * 4.0);
+              const k = d.userData.hitT;
+              d.scale.setScalar(1.0 + k * 0.18);
+            } else {
+              d.scale.setScalar(1.0);
+            }
+          }
+
+          // Animate focus ring under the current next-drum.
+          const nextKey = ROUND_ROBIN[this.nextDrumIdx];
+          const target = this.drums[nextKey];
+          if (target) {
+            this.focusRing.position.set(target.position.x, target.userData.baseY - 0.18, target.position.z);
+            const pulse = 1.0 + 0.08 * Math.sin(t * 4.0);
+            this.focusRing.scale.setScalar(pulse);
+            this.focusRing.material.opacity = 0.55 + 0.25 * Math.sin(t * 4.0);
+          }
+
+          // Advance ripple rings.
+          for (let i = this.ripples.length - 1; i >= 0; i--) {
+            const r = this.ripples[i];
+            r.life += dt;
+            const u = r.life / r.ttl;
+            if (u >= 1) {
+              this.remove(r.mesh);
+              r.mesh.geometry.dispose();
+              r.mesh.material.dispose();
+              this.ripples.splice(i, 1);
+              continue;
+            }
+            r.mesh.scale.setScalar(1 + u * r.scaleEnd);
+            r.mesh.material.opacity = (1 - u) * 0.7;
+          }
+
+          // Advance particle bursts.
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.life += dt;
+            const u = p.life / p.ttl;
+            if (u >= 1) {
+              this.remove(p.points);
+              p.points.geometry.dispose();
+              p.points.material.dispose();
+              this.particles.splice(i, 1);
+              continue;
+            }
+            const pos = p.points.geometry.attributes.position;
+            for (let j = 0; j < pos.count; j++) {
+              const ix = j * 3;
+              const v = p.velocities;
+              pos.array[ix]   += v[ix]   * dt;
+              pos.array[ix+1] += (v[ix+1] - 1.4 * u) * dt;
+              pos.array[ix+2] += v[ix+2] * dt;
+            }
+            pos.needsUpdate = true;
+            p.points.material.opacity = (1 - u) * 0.95;
+            p.points.material.size = 0.025 * (1 - u * 0.6);
+          }
+        }
+
+        // ----- Drum factories -----
+        _makeDrum({ radius, height, position, kind }) {
+          const group = new THREE.Group();
+          group.position.copy(position);
+          group.userData.baseY = position.y;
+          group.userData.phase = Math.random() * Math.PI * 2;
+          group.userData.hitT = 0;
+          group.userData.kind = kind;
+
+          const shellGeom = new THREE.CylinderGeometry(radius, radius, height, 40);
+          const shellMat = new THREE.MeshStandardMaterial({
+            color: this.kit.shellColor, metalness: 0.25, roughness: 0.55
+          });
+          const shell = new THREE.Mesh(shellGeom, shellMat);
+          group.add(shell);
+
+          // Top head (drumskin)
+          const headGeom = new THREE.CircleGeometry(radius * 0.98, 40);
+          const headMat = new THREE.MeshStandardMaterial({
+            color: 0xf6efd7, metalness: 0.05, roughness: 0.7,
+            emissive: 0x000000, emissiveIntensity: 0
+          });
+          const head = new THREE.Mesh(headGeom, headMat);
+          head.rotation.x = -Math.PI / 2;
+          head.position.y = height / 2 + 0.001;
+          group.add(head);
+          group.userData.head = head;
+
+          // Rim
+          const rimGeom = new THREE.TorusGeometry(radius * 1.01, 0.012, 8, 40);
+          const rimMat = new THREE.MeshStandardMaterial({
+            color: this.kit.rimColor, metalness: 0.85, roughness: 0.2
+          });
+          const rim = new THREE.Mesh(rimGeom, rimMat);
+          rim.rotation.x = Math.PI / 2;
+          rim.position.y = height / 2;
+          group.add(rim);
+          group.userData.rim = rim;
+          group.userData.shell = shell;
+          group.userData.radius = radius;
+          group.userData.surfaceY = height / 2 + 0.002;
+
+          this.add(group);
+          return group;
+        }
+
+        _makeHat({ position }) {
+          const group = new THREE.Group();
+          group.position.copy(position);
+          group.userData.baseY = position.y;
+          group.userData.phase = Math.random() * Math.PI * 2;
+          group.userData.hitT = 0;
+          group.userData.kind = 'hat';
+
+          const upper = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.16, 0.165, 0.012, 40),
+            new THREE.MeshStandardMaterial({ color: this.kit.cymbalColor, metalness: 0.95, roughness: 0.25 })
+          );
+          upper.position.y = 0.018;
+          group.add(upper);
+          const lower = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.16, 0.165, 0.010, 40),
+            new THREE.MeshStandardMaterial({ color: this.kit.cymbalColor, metalness: 0.95, roughness: 0.35 })
+          );
+          lower.position.y = -0.004;
+          group.add(lower);
+
+          group.userData.head = upper;
+          group.userData.rim = lower;
+          group.userData.shell = upper;
+          group.userData.radius = 0.16;
+          group.userData.surfaceY = 0.025;
+
+          this.add(group);
+          return group;
+        }
+
+        _makeCymbal({ radius, position }) {
+          const group = new THREE.Group();
+          group.position.copy(position);
+          group.userData.baseY = position.y;
+          group.userData.phase = Math.random() * Math.PI * 2;
+          group.userData.hitT = 0;
+          group.userData.kind = 'crash';
+
+          const disc = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius * 0.92, 0.008, 64),
+            new THREE.MeshStandardMaterial({
+              color: this.kit.cymbalColor, metalness: 0.95, roughness: 0.2,
+              emissive: 0x000000, emissiveIntensity: 0
+            })
+          );
+          group.add(disc);
+          group.userData.head = disc;
+          group.userData.shell = disc;
+          group.userData.radius = radius;
+          group.userData.surfaceY = 0.008;
+          group.rotation.z = -0.06;
+
+          this.add(group);
+          return group;
+        }
+
+        // ----- Kit / state mutations -----
+        _applyKitColors() {
+          const k = this.kit;
+          for (const key of Object.keys(this.drums)) {
+            const d = this.drums[key];
+            if (d.userData.shell?.material && key !== 'hat' && key !== 'crash') {
+              d.userData.shell.material.color.setHex(k.shellColor);
+            }
+            if (d.userData.rim?.material && key !== 'hat' && key !== 'crash') {
+              d.userData.rim.material.color.setHex(k.rimColor);
+            }
+            if (key === 'hat' || key === 'crash') {
+              d.userData.head?.material?.color?.setHex(k.cymbalColor);
+              if (d.userData.rim?.material) d.userData.rim.material.color.setHex(k.cymbalColor);
+            }
+          }
+          this.focusRing.material.color.setHex(k.ringColor);
+        }
+
+        _cycleKit() {
+          this.kitIdx = (this.kitIdx + 1) % KITS.length;
+          this.kit = KITS[this.kitIdx];
+          this._applyKitColors();
+          this._updateHUD();
+          // Confirmation flicker on the ring.
+          this.focusRing.material.opacity = 1.0;
+        }
+
+        _hitNextDrum() {
+          const key = ROUND_ROBIN[this.nextDrumIdx];
+          this._hitDrum(key);
+          this.nextDrumIdx = (this.nextDrumIdx + 1) % ROUND_ROBIN.length;
+          this._updateHUD();
+        }
+
+        _hitDrum(key) {
+          const d = this.drums[key];
+          if (!d) return;
+          d.userData.hitT = 1.0;
+          // Brief emissive flash on the head.
+          const head = d.userData.head;
+          if (head?.material) {
+            head.material.emissive = new THREE.Color(this.kit.ringColor);
+            head.material.emissiveIntensity = 1.2;
+            setTimeout(() => {
+              if (head.material) {
+                head.material.emissiveIntensity = 0;
+              }
+            }, 120);
+          }
+          // Sound.
+          const profile = this.kit.sounds[key];
+          if (profile) playSound(profile);
+          // Ripple + particles.
+          const intensity = (key === 'crash') ? 1.7 : 1.0;
+          this._spawnRipple(d, intensity);
+          this._spawnParticles(d, intensity);
+        }
+
+        _spawnRipple(drum, intensity) {
+          const radius = drum.userData.radius;
+          const ringGeom = new THREE.RingGeometry(radius * 0.95, radius * 1.05, 48);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: this.kit.ringColor, side: THREE.DoubleSide, transparent: true, opacity: 0.7
+          });
+          const ring = new THREE.Mesh(ringGeom, ringMat);
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.set(
+            drum.position.x,
+            drum.position.y + drum.userData.surfaceY + 0.005,
+            drum.position.z
+          );
+          this.add(ring);
+          this.ripples.push({ mesh: ring, life: 0, ttl: 0.8, scaleEnd: 2.5 * intensity });
+        }
+
+        _spawnParticles(drum, intensity) {
+          const count = Math.floor(28 * intensity);
+          const geom = new THREE.BufferGeometry();
+          const positions = new Float32Array(count * 3);
+          const velocities = new Float32Array(count * 3);
+          const ox = drum.position.x;
+          const oy = drum.position.y + drum.userData.surfaceY + 0.01;
+          const oz = drum.position.z;
+          for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = (0.5 + Math.random() * 0.8) * intensity;
+            const upward = 0.6 + Math.random() * 0.9;
+            positions[i*3]   = ox + Math.cos(angle) * 0.02;
+            positions[i*3+1] = oy;
+            positions[i*3+2] = oz + Math.sin(angle) * 0.02;
+            velocities[i*3]   = Math.cos(angle) * speed;
+            velocities[i*3+1] = upward * intensity;
+            velocities[i*3+2] = Math.sin(angle) * speed;
+          }
+          geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          const mat = new THREE.PointsMaterial({
+            color: this.kit.ringColor, size: 0.025, sizeAttenuation: true,
+            transparent: true, opacity: 0.95, depthWrite: false
+          });
+          const points = new THREE.Points(geom, mat);
+          this.add(points);
+          this.particles.push({ points, velocities, life: 0, ttl: 0.9 });
+        }
+
+        _updateFocusRing() {
+          const nextKey = ROUND_ROBIN[this.nextDrumIdx];
+          const target = this.drums[nextKey];
+          if (target) {
+            this.focusRing.position.set(target.position.x, target.userData.baseY - 0.18, target.position.z);
+          }
+        }
+
+        _updateHUD() {
+          document.getElementById('kit-name').textContent = this.kit.name;
+          document.getElementById('kit-name').style.color = this.kit.accent;
+          const nextKey = ROUND_ROBIN[this.nextDrumIdx];
+          document.getElementById('next-drum').textContent = PRETTY[nextKey];
+        }
+
+        _onStatus = (s) => {
+          // Status pill is handled at module scope; keep this hook for future scene reactions.
+        };
+      }
+
+      // ------------------------------------------------------------
+      // DOM wiring — top bar, status pill, sim panel, keyboard, onboarding
+      // ------------------------------------------------------------
+      const btnManual = document.getElementById('mode-manual');
+      const btnMudra  = document.getElementById('mode-mudra');
+      const simPanel  = document.getElementById('mudra-sim');
+      const pill      = document.getElementById('mudra-status');
+
+      const LABELS = {
+        idle: 'Manual mode',
+        connecting: 'Connecting…',
+        connected: 'Connected',
+        disconnected: 'Disconnected',
+      };
+      const CLASSES = {
+        idle: 'conn-manual',
+        connecting: 'conn-connecting',
+        connected: 'conn-connected',
+        disconnected: 'conn-disconnected',
+      };
+      mudra.on('_status', (s) => {
+        pill.classList.remove('conn-manual', 'conn-connecting', 'conn-connected', 'conn-disconnected');
+        pill.classList.add(CLASSES[s] ?? 'conn-manual');
+        pill.textContent = LABELS[s] ?? s;
+      });
+
+      function applyMode(mode) {
+        btnManual.setAttribute('aria-checked', mode === 'manual' ? 'true' : 'false');
+        btnMudra .setAttribute('aria-checked', mode === 'mudra'  ? 'true' : 'false');
+        btnManual.classList.toggle('active', mode === 'manual');
+        btnMudra .classList.toggle('active', mode === 'mudra');
+        simPanel.classList.toggle('disabled', mode === 'mudra');
+        mudra.setMode(mode);
+      }
+      btnManual.addEventListener('click', () => applyMode('manual'));
+      btnMudra .addEventListener('click', () => applyMode('mudra'));
+      applyMode('manual');
+
+      // Sim panel — every button fires via the same code path as a real signal.
+      function simGesture(type) {
+        mudra.send({ command: 'trigger_gesture', data: { type } });
+        if (mudra.mode === 'manual') {
+          mudra.emitSynthetic({ type: 'gesture', data: { type, confidence: 1.0, timestamp: Date.now() } });
+        }
+      }
+      document.getElementById('sim-tap')  .addEventListener('click', () => simGesture('tap'));
+      document.getElementById('sim-2tap') .addEventListener('click', () => simGesture('double_tap'));
+      document.getElementById('sim-twist').addEventListener('click', () => simGesture('twist'));
+
+      // Keyboard — only intercept keys for signals the app actually subscribes to.
+      window.addEventListener('keydown', (e) => {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        // Onboarding dismiss via Escape (capture-phase, distinct from Mudra keys).
+        if (e.key === 'Escape') {
+          const ob = document.getElementById('onboarding-overlay');
+          if (ob && ob.parentNode) { e.preventDefault(); ob.remove(); }
+          return;
+        }
+        switch (e.code) {
+          case 'Space':
+            e.stopPropagation();
+            e.preventDefault();
+            simGesture('tap');
+            break;
+          case 'KeyD':
+            if (e.shiftKey) {
+              e.stopPropagation();
+              simGesture('double_tap');
+            }
+            break;
+          case 'KeyT':
+            if (!e.shiftKey) {
+              e.stopPropagation();
+              simGesture('twist');
+            }
+            break;
+        }
+      }, { capture: true });
+
+      // Onboarding — visible every load, dismissed by CTA or Escape.
+      document.getElementById('onboarding-start').addEventListener('click', () => {
+        const ob = document.getElementById('onboarding-overlay');
+        if (ob && ob.parentNode) ob.remove();
+      });
+
+      // ------------------------------------------------------------
+      // XR Blocks boot
+      // ------------------------------------------------------------
+      document.addEventListener('DOMContentLoaded', () => {
+        const options = new xb.Options();
+        xb.add(new DrumKit());
+        xb.init(options);
+      });
+    </script>
+  </body>
+</html>

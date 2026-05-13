@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rubik's XR | Mudra</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "lit": "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js",
+          "lit/": "https://esm.run/lit@3/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/addons/"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --bg: #f5f7fa;
+        --card: rgba(255, 255, 255, 0.78);
+        --primary: #ef4444;
+        --accent: #2563eb;
+        --text: #1f2937;
+        --text-secondary: #6b7280;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --error: #dc2626;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+
+      /* Top bar — mode toggle + connection pill */
+      #topbar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 999px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+        z-index: 30;
+        font-family: inherit;
+      }
+      .mode-toggle {
+        display: inline-flex;
+        gap: 4px;
+        background: var(--bg);
+        padding: 3px;
+        border-radius: 999px;
+        border: 1px solid var(--text-secondary);
+      }
+      .mode-opt {
+        background: transparent;
+        color: var(--text-secondary);
+        border: none;
+        padding: 6px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        font-family: inherit;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .mode-opt.active {
+        background: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+      }
+      .conn-pill {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        font-family: inherit;
+      }
+      .conn-manual       { background: transparent;    color: var(--text-secondary); border-color: var(--text-secondary); }
+      .conn-connecting   { background: var(--warning); color: #ffffff; }
+      .conn-connected    { background: var(--success); color: #ffffff; }
+      .conn-disconnected { background: var(--error);   color: #ffffff; }
+
+      /* HUD — solve time + move count */
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 10px 14px;
+        border-radius: 16px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+        z-index: 28;
+        font-family: inherit;
+        min-width: 120px;
+      }
+      #hud .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+      #hud .lbl {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--text-secondary);
+        font-weight: 700;
+      }
+      #hud .val {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+      #hud .val.solved { color: var(--success); }
+
+      /* Simulator pill bar */
+      #mudra-sim {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 10px;
+        border-radius: 999px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+        z-index: 25;
+        font-family: inherit;
+        flex-wrap: wrap;
+        max-width: 95vw;
+        justify-content: center;
+      }
+      #mudra-sim .lbl {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0 8px 0 4px;
+      }
+      #mudra-sim .btn {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      #mudra-sim .btn:hover { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+      #mudra-sim .btn:active { transform: scale(0.95); }
+      #mudra-sim .div { width: 1px; height: 18px; background: var(--text-secondary); opacity: 0.3; }
+      #mudra-sim.disabled { pointer-events: none; opacity: 0.4; }
+      #mudra-sim.disabled .btn { cursor: not-allowed; }
+
+      /* Onboarding overlay */
+      #onboarding-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 40;
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(4px);
+        font-family: inherit;
+      }
+      .onboarding-panel {
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        padding: 32px 40px;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--text-secondary);
+        max-width: 90vw;
+      }
+      .onboarding-panel h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+      }
+      .onboarding-panel p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        line-height: 1.55;
+      }
+      .onboarding-panel .kbd {
+        display: inline-block;
+        background: var(--bg);
+        border: 1px solid var(--text-secondary);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: var(--text);
+        margin: 0 2px;
+      }
+      .onboarding-panel .cta {
+        background: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+        transition: transform 0.15s ease;
+      }
+      .onboarding-panel .cta:hover { transform: translateY(-1px); }
+      .onboarding-panel .cta:active { transform: translateY(1px); }
+
+      /* Badge */
+      .mudra-badge {
+        position: fixed;
+        bottom: 56px;
+        right: 14px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        opacity: 0.75;
+        font-family: inherit;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+        z-index: 5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Top bar -->
+    <div id="topbar">
+      <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+        <button id="mode-manual" role="radio" aria-checked="true" class="mode-opt active">Manual</button>
+        <button id="mode-mudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+      </div>
+      <div id="mudra-status" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+    </div>
+
+    <!-- HUD: solve time + move count -->
+    <div id="hud" aria-label="Solve stats">
+      <div class="row"><span class="lbl">Time</span><span id="hud-time" class="val">0:00.0</span></div>
+      <div class="row"><span class="lbl">Moves</span><span id="hud-moves" class="val">0</span></div>
+    </div>
+
+    <!-- Simulator panel: nav_direction with all six sub-actions -->
+    <div id="mudra-sim" aria-label="Mudra signal simulator">
+      <span class="lbl">Direction</span>
+      <button class="btn" id="sim-up">↑</button>
+      <button class="btn" id="sim-down">↓</button>
+      <button class="btn" id="sim-left">←</button>
+      <button class="btn" id="sim-right">→</button>
+      <span class="div"></span>
+      <button class="btn" id="sim-roll-l">Roll L</button>
+      <button class="btn" id="sim-roll-r">Roll R</button>
+    </div>
+
+    <!-- Badge -->
+    <div class="mudra-badge">Created by Mudra</div>
+
+    <!-- Onboarding overlay (bespoke for this app) -->
+    <div id="onboarding-overlay">
+      <div class="onboarding-panel">
+        <h1>🧩 Rubik's XR</h1>
+        <p>Twist and roll a 3D Rubik's Cube in mid-air with a flick of your wrist.</p>
+        <p>
+          Swipe <strong>↑ ↓ ← →</strong> on your Mudra Band to rotate the up, down, left, and right faces.
+          Roll your wrist to spin the whole cube and see the back.
+          Or use <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">←</span><span class="kbd">→</span>
+          and <span class="kbd">Shift+←</span> / <span class="kbd">Shift+→</span>.
+        </p>
+        <button id="onboarding-start" class="cta">Start Solving</button>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import * as xb from 'xrblocks';
+
+      // ---------- MudraClient (verbatim from §4) ----------
+      class MudraClient {
+        constructor(url) {
+          this._url = url;
+          this._handlers = {};
+          this._subscriptions = new Set();
+          this._mode = 'manual';
+          this._state = 'idle';
+          this._ws = null;
+          this._statusPoll = null;
+          this._reconnectTimer = null;
+          this._reconnectIdx = 0;
+          this._connToken = 0;
+        }
+        on(signal, fn) { this._handlers[signal] = fn; }
+        subscribe(signal) {
+          this._subscriptions.add(signal);
+          if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+          }
+        }
+        send(cmd) {
+          if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify(cmd));
+          } else if (this._mode === 'manual' && cmd.command === 'trigger_gesture') {
+            this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 1.0, timestamp: Date.now() } });
+          }
+        }
+        setMode(mode) {
+          if (mode !== 'manual' && mode !== 'mudra') return;
+          if (mode === this._mode) return;
+          this._mode = mode;
+          this._connToken++;
+          this._stopStatusPoll();
+          this._clearReconnect();
+          if (this._ws) {
+            try { this._ws.close(); } catch (_) {}
+            this._ws = null;
+          }
+          if (mode === 'manual') {
+            this._setState('idle');
+          } else {
+            this._openSocket();
+          }
+        }
+        emitSynthetic(payload) { this._emit(payload); }
+        get state() { return this._state; }
+        get mode() { return this._mode; }
+
+        _openSocket() {
+          const token = this._connToken;
+          this._setState('connecting');
+          try {
+            const ws = new WebSocket(this._url);
+            this._ws = ws;
+            ws.onopen = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') { try { ws.close(); } catch (_) {} return; }
+              for (const sig of this._subscriptions) {
+                ws.send(JSON.stringify({ command: 'subscribe', signal: sig }));
+              }
+              ws.send(JSON.stringify({ command: 'get_status' }));
+              this._startStatusPoll();
+            };
+            ws.onmessage = (e) => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              let msg; try { msg = JSON.parse(e.data); } catch (_) { return; }
+              if (msg.type === 'status') {
+                const ok = msg.data?.device?.state === 'connected';
+                this._setState(ok ? 'connected' : 'disconnected');
+                return;
+              }
+              if (msg.type === 'connection_status') {
+                if (msg.data?.status === 'disconnected') this._setState('disconnected');
+                else if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+                  this._ws.send(JSON.stringify({ command: 'get_status' }));
+                }
+                return;
+              }
+              this._emit(msg);
+            };
+            ws.onerror = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              this._setState('disconnected');
+              this._stopStatusPoll();
+              this._scheduleReconnect();
+            };
+            ws.onclose = () => {
+              if (token !== this._connToken || this._mode !== 'mudra') return;
+              this._setState('disconnected');
+              this._stopStatusPoll();
+              this._scheduleReconnect();
+            };
+          } catch (_) {
+            this._setState('disconnected');
+            this._scheduleReconnect();
+          }
+        }
+        _startStatusPoll() {
+          this._stopStatusPoll();
+          this._statusPoll = setInterval(() => {
+            if (this._mode !== 'mudra') { this._stopStatusPoll(); return; }
+            if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+              this._ws.send(JSON.stringify({ command: 'get_status' }));
+            }
+          }, 2000);
+        }
+        _stopStatusPoll() { if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; } }
+        _scheduleReconnect() {
+          this._clearReconnect();
+          const delays = [1000, 2000, 5000, 5000, 5000];
+          const delay = delays[Math.min(this._reconnectIdx, delays.length - 1)];
+          this._reconnectIdx++;
+          const token = this._connToken;
+          this._reconnectTimer = setTimeout(() => {
+            if (token !== this._connToken || this._mode !== 'mudra') return;
+            this._openSocket();
+          }, delay);
+        }
+        _clearReconnect() { if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; } }
+        _setState(s) {
+          if (s === 'connected') this._reconnectIdx = 0;
+          if (s === this._state) return;
+          this._state = s;
+          if (this._handlers['_status']) this._handlers['_status'](s);
+        }
+        _emit(msg) {
+          const h = this._handlers[msg.type];
+          if (h) h(msg.data);
+        }
+      }
+
+      const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+      // ---------- Status pill wiring ----------
+      const pill = document.getElementById('mudra-status');
+      const PILL_LABELS = { idle: 'Manual mode', connecting: 'Connecting…', connected: 'Connected', disconnected: 'Disconnected' };
+      const PILL_CLASSES = { idle: 'conn-manual', connecting: 'conn-connecting', connected: 'conn-connected', disconnected: 'conn-disconnected' };
+      mudra.on('_status', (s) => {
+        pill.classList.remove('conn-manual', 'conn-connecting', 'conn-connected', 'conn-disconnected');
+        pill.classList.add(PILL_CLASSES[s] ?? 'conn-manual');
+        pill.textContent = PILL_LABELS[s] ?? s;
+      });
+
+      // ---------- Mode toggle wiring ----------
+      const btnManual = document.getElementById('mode-manual');
+      const btnMudra  = document.getElementById('mode-mudra');
+      const simPanel  = document.getElementById('mudra-sim');
+      function applyMode(mode) {
+        btnManual.setAttribute('aria-checked', mode === 'manual' ? 'true' : 'false');
+        btnMudra .setAttribute('aria-checked', mode === 'mudra'  ? 'true' : 'false');
+        btnManual.classList.toggle('active', mode === 'manual');
+        btnMudra .classList.toggle('active', mode === 'mudra');
+        simPanel.classList.toggle('disabled', mode === 'mudra');
+        mudra.setMode(mode);
+      }
+      btnManual.addEventListener('click', () => applyMode('manual'));
+      btnMudra .addEventListener('click', () => applyMode('mudra'));
+      applyMode('manual');
+
+      // ---------- HUD ----------
+      const hudTime  = document.getElementById('hud-time');
+      const hudMoves = document.getElementById('hud-moves');
+      function fmtTime(ms) {
+        const total = Math.max(0, ms);
+        const mins  = Math.floor(total / 60000);
+        const secs  = Math.floor((total % 60000) / 1000);
+        const tenths = Math.floor((total % 1000) / 100);
+        return `${mins}:${String(secs).padStart(2, '0')}.${tenths}`;
+      }
+
+      // ---------- Onboarding ----------
+      const onboarding = document.getElementById('onboarding-overlay');
+      const dismissOnboarding = () => {
+        if (onboarding && onboarding.parentNode) {
+          onboarding.remove();
+          script.scrambleAndStart();
+        }
+      };
+      document.getElementById('onboarding-start').addEventListener('click', dismissOnboarding);
+
+      // ---------- Sim panel handlers ----------
+      function simDir(direction) {
+        mudra.emitSynthetic({ type: 'nav_direction', data: { direction, timestamp: Date.now() } });
+      }
+      document.getElementById('sim-up')    .addEventListener('click', () => simDir('Up'));
+      document.getElementById('sim-down')  .addEventListener('click', () => simDir('Down'));
+      document.getElementById('sim-left')  .addEventListener('click', () => simDir('Left'));
+      document.getElementById('sim-right') .addEventListener('click', () => simDir('Right'));
+      document.getElementById('sim-roll-l').addEventListener('click', () => simDir('Roll Left'));
+      document.getElementById('sim-roll-r').addEventListener('click', () => simDir('Roll Right'));
+
+      // ---------- Keyboard handlers (Direction-mode arrows allowed) ----------
+      window.addEventListener('keydown', (e) => {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        // Onboarding Escape dismissal (not a Mudra-claimed key)
+        if (e.key === 'Escape' && onboarding && onboarding.parentNode) {
+          e.preventDefault();
+          dismissOnboarding();
+          return;
+        }
+        switch (e.code) {
+          case 'ArrowUp':    e.stopPropagation(); simDir('Up'); break;
+          case 'ArrowDown':  e.stopPropagation(); simDir('Down'); break;
+          case 'ArrowLeft':
+            e.stopPropagation();
+            simDir(e.shiftKey ? 'Roll Left' : 'Left');
+            break;
+          case 'ArrowRight':
+            e.stopPropagation();
+            simDir(e.shiftKey ? 'Roll Right' : 'Right');
+            break;
+        }
+      }, { capture: true });
+
+      // ---------- Cube logic ----------
+      const SPACING = 0.034;        // cubie center spacing (metres)
+      const CUBIE_SIZE = 0.032;     // cubie edge length
+      const LAYER_EPS = SPACING * 0.5;
+      const COLORS = {
+        up:    0xffffff,
+        down:  0xffd500,
+        front: 0x009b48,
+        back:  0x0046ad,
+        left:  0xff5800,
+        right: 0xb71234,
+        inside: 0x141414,
+      };
+      const FACE_ANIM_MS  = 280;
+      const SPIN_ANIM_MS  = 320;
+      const SCRAMBLE_MS   = 60;
+      const FACE_DIRS = new Set(['Up', 'Down', 'Left', 'Right']);
+
+      class RubiksScript extends xb.Script {
+        init() {
+          this.add(new THREE.HemisphereLight(0xffffff, 0xbac1cc, 2.2));
+          const key = new THREE.DirectionalLight(0xffffff, 1.1);
+          key.position.set(1.2, 2.0, 1.8);
+          this.add(key);
+          const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+          fill.position.set(-1.5, 0.4, -1.0);
+          this.add(fill);
+
+          // Cube root — animation pivots are children of this group
+          this.cubeRoot = new THREE.Group();
+          this.cubeRoot.position.set(0, xb.user.height, -xb.user.objectDistance);
+          this.add(this.cubeRoot);
+
+          this.cubies = [];
+          const innerMatFor = (axisSign) => new THREE.MeshStandardMaterial({
+            color: COLORS.inside, roughness: 0.8, metalness: 0.0,
+          });
+          const faceMat = (color) => new THREE.MeshStandardMaterial({
+            color, roughness: 0.45, metalness: 0.05,
+          });
+          for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+              for (let z = -1; z <= 1; z++) {
+                const geom = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
+                // Three.js BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
+                const mats = [
+                  faceMat(x === 1  ? COLORS.right : COLORS.inside),
+                  faceMat(x === -1 ? COLORS.left  : COLORS.inside),
+                  faceMat(y === 1  ? COLORS.up    : COLORS.inside),
+                  faceMat(y === -1 ? COLORS.down  : COLORS.inside),
+                  faceMat(z === 1  ? COLORS.front : COLORS.inside),
+                  faceMat(z === -1 ? COLORS.back  : COLORS.inside),
+                ];
+                const cubie = new THREE.Mesh(geom, mats);
+                cubie.position.set(x * SPACING, y * SPACING, z * SPACING);
+                cubie.userData.initialPos  = cubie.position.clone();
+                cubie.userData.initialQuat = cubie.quaternion.clone();
+                this.cubeRoot.add(cubie);
+                this.cubies.push(cubie);
+              }
+            }
+          }
+
+          // Slight tilt for a more readable initial view
+          this.cubeRoot.rotation.set(-0.32, 0.55, 0);
+
+          // Mudra wiring
+          mudra.on('nav_direction', (data) => this.onNav(data));
+          mudra.subscribe('nav_direction');
+
+          this.queue = [];
+          this.anim = null;
+          this.solved = true;
+          this.scrambling = false;
+          this.startTime = null;
+          this.solvedAtMs = null;
+          this.moveCount = 0;
+          this.updateHUD();
+        }
+
+        onNav(data) {
+          const dir = data?.direction;
+          if (!dir || dir === 'None') return;
+          if (this.queue.length > 12) return;     // bound the queue
+          this.queue.push(dir);
+          this.tryStartNext();
+        }
+
+        tryStartNext() {
+          if (this.anim || this.queue.length === 0) return;
+          const dir = this.queue.shift();
+          if (dir === 'Roll Left' || dir === 'Roll Right') {
+            this.startSpin(dir === 'Roll Right' ? +1 : -1, SPIN_ANIM_MS);
+          } else if (FACE_DIRS.has(dir)) {
+            this.startFace(dir, FACE_ANIM_MS, /*countsAsMove=*/ true);
+          }
+        }
+
+        startSpin(sign, ms) {
+          this.anim = {
+            kind: 'spin',
+            startRot: this.cubeRoot.rotation.y,
+            delta: (Math.PI / 2) * sign,
+            duration: ms,
+            t0: performance.now(),
+          };
+        }
+
+        startFace(dir, ms, countsAsMove) {
+          // Map direction → axis + layer
+          let axis, layerSign;
+          switch (dir) {
+            case 'Up':    axis = 'y'; layerSign =  1; break;
+            case 'Down':  axis = 'y'; layerSign = -1; break;
+            case 'Right': axis = 'x'; layerSign =  1; break;
+            case 'Left':  axis = 'x'; layerSign = -1; break;
+            default: return;
+          }
+          // Pick cubies whose current local coord on `axis` matches the layer
+          const target = layerSign * SPACING;
+          const layerCubies = this.cubies.filter(
+            (c) => Math.abs(c.position[axis] - target) < LAYER_EPS
+          );
+
+          // Create pivot at cube origin; attach layer cubies (preserves world transform)
+          const pivot = new THREE.Group();
+          this.cubeRoot.add(pivot);
+          for (const c of layerCubies) pivot.attach(c);
+
+          // Rotation direction — pick consistent so reverse swipe undoes it
+          const angle = (Math.PI / 2) * layerSign;
+
+          this.anim = {
+            kind: 'face',
+            pivot,
+            axis,
+            angle,
+            duration: ms,
+            t0: performance.now(),
+          };
+
+          if (countsAsMove) {
+            this.moveCount++;
+            if (this.startTime === null) this.startTime = performance.now();
+            // If we were solved and a move was just made, mark unsolved
+            this.solved = false;
+            this.solvedAtMs = null;
+            this.updateHUD();
+          }
+        }
+
+        finishAnim() {
+          const a = this.anim;
+          if (!a) return;
+          if (a.kind === 'spin') {
+            this.cubeRoot.rotation.y = a.startRot + a.delta;
+          } else if (a.kind === 'face') {
+            a.pivot.rotation[a.axis] = a.angle;
+            // Detach cubies back to cubeRoot, snap their local coords to grid
+            const kids = [...a.pivot.children];
+            for (const c of kids) {
+              this.cubeRoot.attach(c);
+              c.position.x = Math.round(c.position.x / SPACING) * SPACING;
+              c.position.y = Math.round(c.position.y / SPACING) * SPACING;
+              c.position.z = Math.round(c.position.z / SPACING) * SPACING;
+            }
+            this.cubeRoot.remove(a.pivot);
+
+            if (!this.scrambling) {
+              this.checkSolved();
+            }
+          }
+          this.anim = null;
+        }
+
+        checkSolved() {
+          let solved = true;
+          for (const c of this.cubies) {
+            if (c.position.distanceTo(c.userData.initialPos) > 0.005) { solved = false; break; }
+            const dot = Math.abs(c.quaternion.dot(c.userData.initialQuat));
+            if (dot < 0.998) { solved = false; break; }
+          }
+          if (solved && !this.solved && this.startTime !== null && this.moveCount > 0) {
+            this.solvedAtMs = performance.now() - this.startTime;
+          }
+          this.solved = solved;
+          this.updateHUD();
+        }
+
+        updateHUD() {
+          hudMoves.textContent = String(this.moveCount);
+          if (this.solved && this.solvedAtMs !== null) {
+            hudTime.textContent = fmtTime(this.solvedAtMs);
+            hudTime.classList.add('solved');
+            hudMoves.classList.add('solved');
+          } else {
+            hudMoves.classList.remove('solved');
+            hudTime.classList.remove('solved');
+            if (this.startTime === null) {
+              hudTime.textContent = '0:00.0';
+            } else {
+              hudTime.textContent = fmtTime(performance.now() - this.startTime);
+            }
+          }
+        }
+
+        scrambleAndStart() {
+          // Reset stats
+          this.startTime = null;
+          this.solvedAtMs = null;
+          this.moveCount = 0;
+          this.solved = true;
+          this.updateHUD();
+
+          // Build a randomized scramble: 20 random face moves, no immediate inverses
+          this.scrambling = true;
+          const dirs = ['Up', 'Down', 'Left', 'Right'];
+          let last = null;
+          for (let i = 0; i < 22; i++) {
+            let pick;
+            do {
+              pick = dirs[Math.floor(Math.random() * dirs.length)];
+            } while (last && this.isOpposite(last, pick));
+            this.queue.push(pick);
+            last = pick;
+          }
+        }
+
+        isOpposite(a, b) {
+          // Treat Up/Down and Left/Right as paired axes; avoid back-to-back same-axis to prevent trivial undos
+          if ((a === 'Up' && b === 'Down') || (a === 'Down' && b === 'Up')) return true;
+          if ((a === 'Left' && b === 'Right') || (a === 'Right' && b === 'Left')) return true;
+          return false;
+        }
+
+        update() {
+          const now = performance.now();
+
+          // Drive active animation
+          if (this.anim) {
+            const a = this.anim;
+            const t = Math.min(1, (now - a.t0) / a.duration);
+            const e = 1 - Math.pow(1 - t, 3);   // easeOutCubic
+            if (a.kind === 'spin') {
+              this.cubeRoot.rotation.y = a.startRot + a.delta * e;
+            } else if (a.kind === 'face') {
+              a.pivot.rotation[a.axis] = a.angle * e;
+            }
+            if (t >= 1) {
+              this.finishAnim();
+              // If scrambling, speed remaining scramble moves
+              if (this.scrambling) {
+                if (this.queue.length === 0) {
+                  this.scrambling = false;
+                  // Don't count scramble as solved-start time
+                  this.startTime = null;
+                  this.moveCount = 0;
+                  this.solved = false;
+                  this.updateHUD();
+                } else {
+                  // Start the next scramble move with short duration
+                  const dir = this.queue.shift();
+                  this.startFace(dir, SCRAMBLE_MS, /*countsAsMove=*/ false);
+                }
+              } else {
+                this.tryStartNext();
+              }
+            }
+          } else if (this.queue.length > 0) {
+            // Idle — start the next queued move
+            if (this.scrambling) {
+              const dir = this.queue.shift();
+              this.startFace(dir, SCRAMBLE_MS, /*countsAsMove=*/ false);
+            } else {
+              this.tryStartNext();
+            }
+          }
+
+          // Live-update the solve timer
+          if (this.startTime !== null && !this.solved) {
+            hudTime.textContent = fmtTime(now - this.startTime);
+          }
+        }
+      }
+
+      const script = new RubiksScript();
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const options = new xb.Options();
+        xb.add(script);
+        xb.init(options);
+      });
+    </script>
+  </body>
+</html>

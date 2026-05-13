@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pocket Deck — Hands-Free Slides</title>
+  <style>
+    :root {
+      --bg: #f6f1e7;
+      --ink: #1c1b29;
+      --ink-soft: #5a5870;
+      --paper: #ffffff;
+      --line: rgba(28, 27, 41, 0.12);
+      --accent: #e0533a;
+      --accent-soft: #f7b5a1;
+      --gold: #c69749;
+      --success: #2f9d62;
+      --warning: #c08a1f;
+      --error: #c0392b;
+      --card: var(--paper);
+      --text: var(--ink);
+      --text-secondary: var(--ink-soft);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", "Helvetica Neue", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      background: linear-gradient(to bottom, rgba(246, 241, 231, 0.96), rgba(246, 241, 231, 0.72) 70%, transparent);
+      pointer-events: none;
+    }
+    .topbar > * { pointer-events: auto; }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: var(--ink);
+    }
+    .brand .mark {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: var(--bg);
+      display: grid; place-items: center;
+      font-family: "Playfair Display", "Georgia", serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .spacer { flex: 1; }
+
+    .mode-toggle {
+      display: inline-flex;
+      gap: 4px;
+      background: rgba(28, 27, 41, 0.06);
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+    }
+    .mode-opt {
+      background: transparent;
+      color: var(--ink-soft);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .mode-opt.active {
+      background: var(--ink);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(28, 27, 41, 0.18);
+    }
+    .mode-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .conn-pill::before {
+      content: "";
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.8;
+    }
+    .conn-manual       { color: var(--ink-soft); }
+    .conn-connecting   { color: var(--warning); background: #fff7e3; border-color: rgba(192, 138, 31, 0.4); }
+    .conn-connected    { color: var(--success); background: #e7f6ee; border-color: rgba(47, 157, 98, 0.4); }
+    .conn-disconnected { color: var(--error);   background: #fbeae7; border-color: rgba(192, 57, 43, 0.4); }
+
+    .slide-counter {
+      font-family: "Playfair Display", "Georgia", serif;
+      font-size: 14px;
+      color: var(--ink-soft);
+      letter-spacing: 0.04em;
+      min-width: 56px;
+      text-align: right;
+    }
+    .slide-counter strong { color: var(--ink); font-weight: 600; font-size: 16px; }
+
+    /* ── Progress bar ────────────────────────────────────────────── */
+    .progress {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: rgba(28, 27, 41, 0.08);
+      z-index: 31;
+      overflow: hidden;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      transition: width 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ── Stage ───────────────────────────────────────────────────── */
+    .stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: clamp(40px, 8vw, 120px);
+      text-align: left;
+      opacity: 0;
+      transform: translateX(30px) scale(0.985);
+      transition: opacity 460ms cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+    .slide.prev {
+      opacity: 0;
+      transform: translateX(-30px) scale(0.985);
+    }
+
+    .slide-inner {
+      width: min(1080px, 100%);
+      display: grid;
+      gap: 28px;
+      align-content: center;
+    }
+
+    .eyebrow {
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .eyebrow.on-dark { color: var(--accent-soft); }
+
+    h1.headline {
+      font-family: "Playfair Display", "Georgia", serif;
+      font-weight: 700;
+      font-size: clamp(44px, 7.4vw, 104px);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    h1.headline em {
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .lede {
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.45;
+      max-width: 760px;
+      color: var(--ink-soft);
+    }
+    .lede.on-dark { color: rgba(255, 255, 255, 0.78); }
+
+    .quote {
+      font-family: "Playfair Display", "Georgia", serif;
+      font-style: italic;
+      font-size: clamp(28px, 4.4vw, 56px);
+      line-height: 1.18;
+      max-width: 920px;
+    }
+    .quote::before { content: "\201C"; }
+    .quote::after  { content: "\201D"; }
+
+    .meta-row {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      align-items: baseline;
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .meta-row.on-dark { color: rgba(255,255,255,0.6); }
+    .meta-row span strong { color: var(--ink); font-weight: 600; }
+    .meta-row.on-dark span strong { color: #fff; }
+
+    .bullets {
+      display: grid;
+      gap: 18px;
+      max-width: 760px;
+    }
+    .bullets li {
+      list-style: none;
+      padding-left: 36px;
+      position: relative;
+      font-size: clamp(18px, 1.8vw, 22px);
+      line-height: 1.42;
+    }
+    .bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0.55em;
+      width: 22px; height: 1px;
+      background: var(--accent);
+    }
+    .bullets.on-dark li { color: rgba(255,255,255,0.92); }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: 0 1px 0 rgba(28, 27, 41, 0.08);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .on-dark .kbd { background: rgba(255,255,255,0.92); border-color: transparent; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 24px;
+      max-width: 920px;
+    }
+    .stat-grid .stat {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+    .on-dark .stat-grid .stat { border-top-color: rgba(255,255,255,0.25); }
+    .stat-grid .num {
+      font-family: "Playfair Display", "Georgia", serif;
+      font-size: clamp(40px, 5.4vw, 64px);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--accent);
+    }
+    .on-dark .stat-grid .num { color: var(--accent-soft); }
+    .stat-grid .lbl {
+      margin-top: 8px;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .on-dark .stat-grid .lbl { color: rgba(255,255,255,0.6); }
+
+    /* ── Per-slide palettes ──────────────────────────────────────── */
+    .slide.theme-cream  { background: radial-gradient(ellipse at top right, #fff8ec 0%, #f6f1e7 70%); color: var(--ink); }
+    .slide.theme-ink    { background: radial-gradient(ellipse at 20% 110%, #2c2b44 0%, #15151f 70%); color: #fff; }
+    .slide.theme-coral  { background: linear-gradient(135deg, #ffeae0 0%, #ffd6c2 100%); color: var(--ink); }
+    .slide.theme-sage   { background: linear-gradient(135deg, #e7eedf 0%, #cfdcc1 100%); color: var(--ink); }
+    .slide.theme-night  { background: radial-gradient(circle at 80% 20%, #3c2f63 0%, #1a1230 80%); color: #fff; }
+    .slide.theme-paper  { background: #fcfaf5; color: var(--ink); }
+    .slide.theme-finale { background: linear-gradient(135deg, #1c1b29 0%, #2a1f3a 60%, #4a2435 100%); color: #fff; }
+
+    .slide.theme-ink h1.headline em,
+    .slide.theme-night h1.headline em,
+    .slide.theme-finale h1.headline em { color: var(--accent-soft); }
+
+    /* Decorative numerals */
+    .big-num {
+      position: absolute;
+      right: clamp(20px, 5vw, 80px);
+      bottom: clamp(40px, 8vw, 100px);
+      font-family: "Playfair Display", "Georgia", serif;
+      font-style: italic;
+      font-size: clamp(180px, 30vw, 420px);
+      line-height: 0.8;
+      color: rgba(28, 27, 41, 0.05);
+      pointer-events: none;
+      user-select: none;
+      font-weight: 700;
+    }
+    .slide.theme-ink .big-num,
+    .slide.theme-night .big-num,
+    .slide.theme-finale .big-num { color: rgba(255,255,255,0.07); }
+
+    /* ── Simulator panel ─────────────────────────────────────────── */
+    .sim-panel {
+      position: fixed;
+      bottom: 18px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(28, 27, 41, 0.12);
+      transition: opacity 200ms ease;
+    }
+    .sim-panel.disabled {
+      pointer-events: none;
+      opacity: 0.35;
+    }
+    .sim-panel.disabled button { cursor: not-allowed; }
+    .sim-panel .sim-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      padding-right: 4px;
+      border-right: 1px solid var(--line);
+      margin-right: 4px;
+    }
+    .btn {
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: transform 100ms ease, background 100ms ease;
+    }
+    .btn:hover { transform: translateY(-1px); background: #2d2c44; }
+    .btn:active { transform: translateY(0); }
+    .btn.ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .btn.ghost:hover { background: rgba(28, 27, 41, 0.04); }
+    .btn .accent { color: var(--accent); margin-right: 4px; }
+
+    /* ── HUD ─────────────────────────────────────────────────────── */
+    .hud {
+      position: fixed;
+      bottom: 18px; right: 18px;
+      z-index: 30;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    .hud .lbl { color: var(--ink); margin-right: 8px; opacity: 0.55; }
+    .hud .val { color: var(--accent); font-weight: 600; }
+
+    .mudra-badge {
+      position: fixed;
+      bottom: 18px; left: 18px;
+      z-index: 30;
+      font-size: 11px;
+      color: var(--ink-soft);
+      opacity: 0.7;
+      font-family: inherit;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    @media (max-width: 680px) {
+      .topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+      .brand { font-size: 10px; }
+      .mode-opt { padding: 5px 10px; font-size: 11px; }
+      .slide-counter { font-size: 12px; min-width: 0; }
+      .sim-panel { bottom: 14px; padding: 8px 10px; gap: 6px; }
+      .sim-panel .sim-label { display: none; }
+      .hud { bottom: 70px; right: 12px; }
+      .mudra-badge { bottom: 70px; left: 12px; }
+    }
+
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    .mudra-onb {
+      border: none;
+      padding: 0;
+      border-radius: 14px;
+      width: min(560px, 92vw);
+      max-height: min(82vh, 720px);
+      background: #fff;
+      color: #111;
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+      overflow: hidden;
+    }
+    .mudra-onb::backdrop { background: rgba(0, 0, 0, .55); }
+    .mudra-onb__head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 8px;
+    }
+    .mudra-onb__brand { display: inline-flex; align-items: center; gap: 8px; }
+    .mudra-onb__logo { display: block; width: 28px; height: 28px; flex: none; }
+    .mudra-onb__wordmark {
+      font-size: 12px; font-weight: 700; letter-spacing: .22em;
+      color: #e0533a; text-transform: uppercase;
+    }
+    .mudra-onb__title {
+      margin: 0; padding: 0 22px 14px;
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .mudra-onb__close {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: none; background: #1a1a1a; color: #fff;
+      width: 32px; height: 32px; border-radius: 50%;
+      font-size: 22px; line-height: 1; padding: 0; cursor: pointer;
+    }
+    .mudra-onb__body { padding: 4px 22px 8px; max-height: 56vh; overflow-y: auto; }
+    .mudra-onb__lede { margin: 0 0 12px; color: #555; }
+    .mudra-onb__actions { width: 100%; border-collapse: collapse; }
+    .mudra-onb__actions th, .mudra-onb__actions td {
+      text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: top;
+    }
+    .mudra-onb__actions th { font-size: 12px; text-transform: uppercase; color: #777; letter-spacing: .04em; }
+    .mudra-onb__actions td:nth-child(2) { color: #e0533a; font-weight: 600; }
+    .mudra-onb__actions td:nth-child(3) { color: #444; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .mudra-onb__foot { padding: 14px 22px 20px; text-align: right; }
+    .mudra-onb__continue {
+      border: none; background: #1a1a1a; color: #fff;
+      padding: 9px 18px; border-radius: 999px; font-weight: 600; cursor: pointer;
+    }
+    .mudra-onb__reopen {
+      position: fixed; right: 16px; top: 60px; z-index: 9999;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: none; background: #1a1a1a; color: #fff;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    }
+    .mudra-onb--hidden, .mudra-onb__reopen--hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Progress bar -->
+  <div class="progress" aria-hidden="true"><span id="progressFill"></span></div>
+
+  <!-- Top bar: brand + mode toggle + conn pill + counter -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">P</span>
+      <span>Pocket&nbsp;Deck</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+      <button id="modeManual" role="radio" aria-checked="true"  class="mode-opt active">Manual</button>
+      <button id="modeMudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+    </div>
+    <div id="connPill" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+    <div class="slide-counter" aria-label="Slide position">
+      <strong id="slideNum">01</strong> <span style="opacity:.5"> / </span> <span id="slideTotal">07</span>
+    </div>
+  </header>
+
+  <!-- Stage: full-screen slide deck -->
+  <main class="stage" id="stage" aria-live="polite">
+    <!-- 1 -->
+    <section class="slide theme-cream active" data-slide="1">
+      <div class="big-num">1</div>
+      <div class="slide-inner">
+        <span class="eyebrow">Pocket Deck · 2026</span>
+        <h1 class="headline">Hands in pockets.<br><em>Slides in motion.</em></h1>
+        <p class="lede">A presentation deck designed for the Mudra Band — no clicker, no laptop reach, just neural intent. Pinch to advance, double-tap to step back.</p>
+        <div class="meta-row">
+          <span>Speaker · <strong>You</strong></span>
+          <span>Runtime · <strong>~6 min</strong></span>
+          <span>Mode · <strong>Hands-free</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide theme-ink" data-slide="2">
+      <div class="big-num">2</div>
+      <div class="slide-inner on-dark">
+        <span class="eyebrow on-dark">The Problem</span>
+        <h1 class="headline">A clicker is a <em>tether.</em></h1>
+        <p class="lede on-dark">Slide-decks pull the speaker back to a device. The hands stop conducting and start fumbling. The room feels it within five seconds.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide theme-coral" data-slide="3">
+      <div class="big-num">3</div>
+      <div class="slide-inner">
+        <span class="eyebrow">The Gesture Language</span>
+        <h1 class="headline">Two motions.<br>Whole deck.</h1>
+        <ul class="bullets">
+          <li><strong>Pinch</strong> (thumb-to-index tap) — advance to the next slide.</li>
+          <li><strong>Double-tap</strong> — go back one slide. Same finger, faster cadence.</li>
+          <li>That's it. No menu, no mode, no second hand.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide theme-sage" data-slide="4">
+      <div class="big-num">4</div>
+      <div class="slide-inner">
+        <span class="eyebrow">Always-On Affordance</span>
+        <h1 class="headline">A thin line<br>tracks the talk.</h1>
+        <p class="lede">A coral-to-gold progress bar sits across the top of the stage. The speaker glances up; the audience sees pace, not panic. The bar fills slide-by-slide — never scrubbed, never noisy.</p>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide theme-night" data-slide="5">
+      <div class="big-num">5</div>
+      <div class="slide-inner on-dark">
+        <span class="eyebrow on-dark">Fallback By Design</span>
+        <h1 class="headline">If the band sleeps,<br>the keyboard stays.</h1>
+        <ul class="bullets on-dark">
+          <li><span class="kbd">Space</span> or <span class="kbd">&rarr;</span> — next slide.</li>
+          <li><span class="kbd">B</span> or <span class="kbd">&larr;</span> — previous slide.</li>
+          <li>Same handler path. The deck never knows the difference.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide theme-paper" data-slide="6">
+      <div class="big-num">6</div>
+      <div class="slide-inner">
+        <span class="eyebrow">By The Numbers</span>
+        <h1 class="headline">Why it sticks.</h1>
+        <div class="stat-grid">
+          <div class="stat"><div class="num">2</div><div class="lbl">Gestures total</div></div>
+          <div class="stat"><div class="num">0</div><div class="lbl">Devices to hold</div></div>
+          <div class="stat"><div class="num">&infin;</div><div class="lbl">Slides addressable</div></div>
+          <div class="stat"><div class="num">200<span style="font-size:0.6em">ms</span></div><div class="lbl">Pinch to paint</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide theme-finale" data-slide="7">
+      <div class="big-num">7</div>
+      <div class="slide-inner on-dark">
+        <span class="eyebrow on-dark">End Of Deck</span>
+        <h1 class="headline">Thank you.<br><em>Questions?</em></h1>
+        <p class="lede on-dark">Double-tap to walk it back. Pinch one more time to loop to the start. Or just lower your hand — the audience will pick it up from here.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Simulator panel: only Tap + 2Tap because we only subscribe to those gestures -->
+  <div id="simPanel" class="sim-panel" aria-label="Simulator">
+    <span class="sim-label">Simulate</span>
+    <button class="btn ghost" id="simBack"><span class="accent">⇠</span> 2Tap</button>
+    <button class="btn"        id="simNext">Tap <span class="accent">⇢</span></button>
+  </div>
+
+  <!-- Telemetry HUD -->
+  <div class="hud"><span class="lbl">Last</span><span class="val" id="hudLast">—</span></div>
+
+  <div class="mudra-badge">Created by Mudra</div>
+
+  <!-- =============================================================== -->
+  <!--  Onboarding modal — feature 005-onboarding-modal                -->
+  <!-- =============================================================== -->
+  <dialog id="mudra-onboarding" class="mudra-onb" data-app-name="Pocket Deck">
+    <header class="mudra-onb__head">
+      <div class="mudra-onb__brand">
+        <svg class="mudra-onb__logo" viewBox="0 0 32 32" aria-hidden="true">
+          <ellipse cx="16" cy="16" rx="13" ry="9" fill="none" stroke="#e0533a" stroke-width="2"/>
+          <circle cx="11" cy="16" r="1.6" fill="#c69749"/>
+          <circle cx="16" cy="16" r="1.6" fill="#c69749"/>
+          <circle cx="21" cy="16" r="1.6" fill="#c69749"/>
+        </svg>
+        <span class="mudra-onb__wordmark">MUDRA</span>
+      </div>
+      <button type="button" class="mudra-onb__close" aria-label="Close">×</button>
+    </header>
+    <h2 class="mudra-onb__title">Welcome to <span class="mudra-onb__name"></span></h2>
+    <section class="mudra-onb__body">
+      <p class="mudra-onb__lede">A full-screen slide deck for hands-free presenting. Pinch to advance, double-tap to step back — or use the keyboard.</p>
+      <table class="mudra-onb__actions">
+        <thead><tr><th>Action</th><th>Mudra</th><th>Manual</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <footer class="mudra-onb__foot">
+      <button type="button" class="mudra-onb__continue">Got it</button>
+    </footer>
+  </dialog>
+  <button type="button" id="mudra-onboarding-help" class="mudra-onb__reopen" aria-label="Show controls">?</button>
+
+  <script>
+    /* ===============================================================
+       Pocket Deck — slide controller
+       Signal model: gesture-only (tap → next, double_tap → back).
+       Mode Toggle: Manual (default, sim-panel active, NO socket) /
+                    Mudra (socket open to 127.0.0.1:8766, sim-panel disabled).
+       =============================================================== */
+
+    const WS_URL = "ws://127.0.0.1:8766";
+    const SUBSCRIBED_SIGNALS = ["gesture"];
+    const STATUS_POLL_MS = 2000;
+    const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 5000, 5000];
+
+    // ── State ─────────────────────────────────────────────────────
+    let mode = "manual";
+    let connectionState = "idle";
+    let socket = null;
+    let connToken = 0;
+    let reconnectTimer = null;
+    let reconnectIndex = 0;
+    let statusPollTimer = null;
+
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const total = slides.length;
+    let current = 0;
+
+    // ── DOM ───────────────────────────────────────────────────────
+    const elModeManual = document.getElementById("modeManual");
+    const elModeMudra  = document.getElementById("modeMudra");
+    const elPill       = document.getElementById("connPill");
+    const elSimPanel   = document.getElementById("simPanel");
+    const elSimNext    = document.getElementById("simNext");
+    const elSimBack    = document.getElementById("simBack");
+    const elSlideNum   = document.getElementById("slideNum");
+    const elSlideTotal = document.getElementById("slideTotal");
+    const elProgress   = document.getElementById("progressFill");
+    const elHudLast    = document.getElementById("hudLast");
+
+    elSlideTotal.textContent = String(total).padStart(2, "0");
+    renderSlides();
+    renderProgress();
+
+    // ── Slide rendering ───────────────────────────────────────────
+    function renderSlides() {
+      slides.forEach((el, i) => {
+        el.classList.toggle("active", i === current);
+        el.classList.toggle("prev",   i <  current);
+      });
+      elSlideNum.textContent = String(current + 1).padStart(2, "0");
+    }
+    function renderProgress() {
+      const pct = ((current + 1) / total) * 100;
+      elProgress.style.width = pct + "%";
+    }
+    function next() {
+      if (current >= total - 1) return;
+      current++;
+      renderSlides();
+      renderProgress();
+    }
+    function back() {
+      if (current <= 0) return;
+      current--;
+      renderSlides();
+      renderProgress();
+    }
+
+    // ── Signal dispatch (single entry: synthetic AND real) ────────
+    function dispatch(msg) {
+      if (!msg || !msg.type) return;
+      switch (msg.type) {
+        case "gesture":            return handleGesture(msg.data);
+        case "connection_status":  return handleConnectionStatus(msg.data);
+        case "status":             return handleStatus(msg.data);
+        // ignore everything else
+      }
+    }
+
+    function handleGesture(data = {}) {
+      const type = (data.type || "").toLowerCase();
+      elHudLast.textContent = type || "gesture";
+      if (type === "tap")              next();
+      else if (type === "double_tap")  back();
+      // twist / double_twist / unknown → ignored
+    }
+
+    function handleStatus(data) {
+      if (mode !== "mudra") return;
+      const deviceState = data?.device?.state;
+      if (deviceState === "connected") setState("connected");
+      else                             setState("disconnected");
+    }
+    function handleConnectionStatus(data) {
+      if (mode !== "mudra") return;
+      if (data?.status === "disconnected") setState("disconnected");
+      if (data?.status === "connected" && socket?.readyState === 1) {
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }
+    }
+
+    // ── Socket lifecycle (lazy: open ONLY in Mudra mode) ──────────
+    function openSocket() {
+      closeSocket();
+      const myToken = ++connToken;
+      setState("connecting");
+      let ws;
+      try { ws = new WebSocket(WS_URL); }
+      catch (_) { setState("disconnected"); scheduleReconnect(); return; }
+
+      ws.onopen = () => {
+        if (myToken !== connToken) { try { ws.close(); } catch(_) {} return; }
+        socket = ws;
+        SUBSCRIBED_SIGNALS.forEach(sig =>
+          ws.send(JSON.stringify({ command: "subscribe", signal: sig }))
+        );
+        ws.send(JSON.stringify({ command: "get_status" }));
+        startStatusPoll();
+      };
+      ws.onmessage = (e) => {
+        try { dispatch(JSON.parse(e.data)); }
+        catch (_) { /* ignore non-JSON */ }
+      };
+      const onClose = () => {
+        if (myToken !== connToken) return;
+        socket = null;
+        stopStatusPoll();
+        setState("disconnected");
+        scheduleReconnect();
+      };
+      ws.onerror = onClose;
+      ws.onclose = onClose;
+    }
+
+    function closeSocket() {
+      connToken++;
+      if (socket) { try { socket.close(); } catch(_) {} socket = null; }
+      cancelReconnect();
+      stopStatusPoll();
+    }
+
+    function scheduleReconnect() {
+      if (mode !== "mudra") return;
+      cancelReconnect();
+      const delay = RECONNECT_DELAYS_MS[Math.min(reconnectIndex, RECONNECT_DELAYS_MS.length - 1)];
+      reconnectIndex++;
+      reconnectTimer = setTimeout(() => { if (mode === "mudra") openSocket(); }, delay);
+    }
+    function cancelReconnect() {
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    }
+
+    function startStatusPoll() {
+      stopStatusPoll();
+      statusPollTimer = setInterval(() => {
+        if (mode !== "mudra" || !socket || socket.readyState !== 1) return;
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }, STATUS_POLL_MS);
+    }
+    function stopStatusPoll() {
+      if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
+    }
+
+    // ── Continuous-state reset (gesture-only deck = no continuous state) ─
+    function resetContinuousState() { /* nothing continuous to reset */ }
+
+    // ── Mode change ───────────────────────────────────────────────
+    function setMode(nextMode) {
+      if (nextMode === mode) return;
+      mode = nextMode;
+      resetContinuousState();
+      if (mode === "mudra") openSocket(); else closeSocket();
+      elSimPanel.classList.toggle("disabled", mode === "mudra");
+      elSimPanel.querySelectorAll("button").forEach(b => {
+        b.setAttribute("aria-disabled", mode === "mudra" ? "true" : "false");
+        b.tabIndex = mode === "mudra" ? -1 : 0;
+      });
+      elModeManual.setAttribute("aria-checked", mode === "manual");
+      elModeMudra .setAttribute("aria-checked", mode === "mudra");
+      elModeManual.classList.toggle("active", mode === "manual");
+      elModeMudra .classList.toggle("active", mode === "mudra");
+      setState(mode === "manual" ? "idle" : "connecting");
+    }
+
+    // ── Connection pill ───────────────────────────────────────────
+    function setState(nextState) {
+      connectionState = nextState;
+      elPill.classList.remove("conn-manual","conn-connecting","conn-connected","conn-disconnected");
+      if (mode === "manual")                 { elPill.classList.add("conn-manual");        elPill.textContent = "Manual mode";  return; }
+      if (nextState === "connecting")        { elPill.classList.add("conn-connecting");    elPill.textContent = "Connecting…";  }
+      else if (nextState === "connected")    { elPill.classList.add("conn-connected");     elPill.textContent = "Connected";    reconnectIndex = 0; }
+      else if (nextState === "disconnected") { elPill.classList.add("conn-disconnected");  elPill.textContent = "Disconnected"; }
+    }
+
+    // ── Sim panel: emit synthetic gesture via dispatch() ─────────
+    function simGesture(type) {
+      dispatch({
+        type: "gesture",
+        data: { type, confidence: 1.0, timestamp: Date.now() },
+        timestamp: Date.now(),
+      });
+    }
+    elSimNext.addEventListener("click", () => simGesture("tap"));
+    elSimBack.addEventListener("click", () => simGesture("double_tap"));
+
+    // ── Mode toggle wiring ────────────────────────────────────────
+    elModeManual.addEventListener("click", () => setMode("manual"));
+    elModeMudra .addEventListener("click", () => setMode("mudra"));
+
+    // ── Keyboard fallback (gated to Manual mode) ─────────────────
+    document.addEventListener("keydown", (e) => {
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (mode === "mudra") return;
+      const k = e.key;
+      if (k === " " || k === "ArrowRight" || k === "PageDown") {
+        e.preventDefault();
+        simGesture("tap");
+      } else if (k === "b" || k === "B" || k === "ArrowLeft" || k === "PageUp" || k === "Backspace") {
+        e.preventDefault();
+        simGesture("double_tap");
+      }
+    });
+
+    // Reset pill to initial state (Manual)
+    setState("idle");
+  </script>
+
+  <script>
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    (() => {
+      const ACTIONS = [
+        { label: "Next slide",     mudra: "gesture: pinch",      manual: "Space" },
+        { label: "Previous slide", mudra: "gesture: double-tap", manual: "B" },
+      ];
+
+      const dialog = document.getElementById("mudra-onboarding");
+      const reopen = document.getElementById("mudra-onboarding-help");
+      if (!dialog || !reopen) return;
+
+      const nameEl = dialog.querySelector(".mudra-onb__name");
+      const override = dialog.dataset.appName && dialog.dataset.appName.trim();
+      if (override) {
+        nameEl.textContent = override;
+      } else {
+        const base = (location.pathname.split("/").pop() || "").replace(/\.html?$/i, "");
+        const pretty = base.replace(/[-_]+/g, " ").trim()
+          .split(/\s+/).map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : "").join(" ");
+        nameEl.textContent = pretty || "Mudra App";
+      }
+
+      const tbody = dialog.querySelector(".mudra-onb__actions tbody");
+      ACTIONS.forEach(a => {
+        if (a.mudra == null && a.manual == null) return;
+        const tr = document.createElement("tr");
+        const td = (text) => { const c = document.createElement("td"); c.textContent = text; return c; };
+        tr.appendChild(td(a.label));
+        tr.appendChild(td(a.mudra == null ? "—" : a.mudra));
+        tr.appendChild(td(a.manual == null ? "—" : a.manual));
+        tbody.appendChild(tr);
+      });
+
+      const close = () => dialog.close();
+      dialog.querySelector(".mudra-onb__close").addEventListener("click", close);
+      dialog.querySelector(".mudra-onb__continue").addEventListener("click", close);
+      reopen.addEventListener("click", () => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      requestAnimationFrame(() => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      const setHidden = (h) => {
+        dialog.classList.toggle("mudra-onb--hidden", h);
+        reopen.classList.toggle("mudra-onb__reopen--hidden", h);
+        if (h && dialog.open) dialog.close();
+      };
+      ["xrsession-start", "vr-session-start", "ar-session-start"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(true)));
+      ["xrsession-end", "vr-session-end", "ar-session-end"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(false)));
+    })();
+  </script>
+</body>
+</html>

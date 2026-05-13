@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One-Handed Recipe Coach</title>
+  <style>
+    :root {
+      --bg: #fff7ed;
+      --bg-2: #fff1de;
+      --card: #ffffff;
+      --primary: #c2410c;
+      --accent: #ea580c;
+      --highlight: #fb923c;
+      --text: #3f1d10;
+      --text-secondary: #8a5a3b;
+      --line: #f4d8b8;
+      --success: #16a34a;
+      --warning: #ca8a04;
+      --error: #dc2626;
+      --shadow: 0 18px 50px -20px rgba(194, 65, 12, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(1100px 600px at 85% -10%, #ffe2c0 0%, transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, #ffd2b3 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Inter", Poppins, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      padding: 18px 22px 24px;
+      gap: 16px;
+    }
+
+    /* ── Top bar: brand · mode · connection pill ───────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      letter-spacing: .04em;
+    }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--highlight));
+      display: grid; place-items: center; color: #fff;
+      font-weight: 800; font-size: 18px;
+      box-shadow: var(--shadow);
+    }
+    .brand-text { font-weight: 700; font-size: 14px; color: var(--text); }
+    .brand-text small { display: block; color: var(--text-secondary); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; font-size: 10px; margin-top: 2px;}
+
+    .topbar-right { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .mode-toggle {
+      display: inline-flex; gap: 4px;
+      background: #fff;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 14px -8px rgba(194, 65, 12, .35);
+    }
+    .mode-opt {
+      background: transparent; color: var(--text-secondary);
+      border: none; padding: 7px 16px; border-radius: 999px;
+      font-weight: 600; font-size: 13px; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .mode-opt:hover { color: var(--primary); }
+    .mode-opt.active { background: var(--primary); color: #fff; }
+
+    .conn-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; letter-spacing: .02em;
+      border: 1px solid transparent;
+    }
+    .conn-pill::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+    }
+    .conn-manual       { background: transparent; color: var(--text-secondary); border-color: var(--text-secondary); }
+    .conn-connecting   { background: #fff7c2; color: #92590a; border-color: #f5d35a; }
+    .conn-connected    { background: #d6f5d8; color: #166534; border-color: #66c08c; }
+    .conn-disconnected { background: #ffd8d8; color: #9b1c1c; border-color: #f08a8a; }
+
+    /* ── Main split: stage + side info ─────────────────────────────── */
+    .stage-wrap {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+      gap: 16px;
+      min-height: 0;
+    }
+    @media (max-width: 880px) {
+      .stage-wrap { grid-template-columns: 1fr; }
+    }
+
+    .stage {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px clamp(20px, 4vw, 40px);
+      display: flex; flex-direction: column;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .stage::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 100% 0%, rgba(251, 146, 60, .15), transparent 60%);
+      pointer-events: none;
+    }
+
+    .step-meta {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; flex-wrap: wrap;
+      color: var(--text-secondary);
+      font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .step-meta .recipe-name {
+      color: var(--primary); letter-spacing: 0; text-transform: none;
+      font-size: 14px; font-weight: 700;
+    }
+
+    .step-counter {
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .step-dots { display: inline-flex; gap: 5px; }
+    .step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--line);
+      transition: background .2s, transform .2s;
+    }
+    .step-dot.done    { background: var(--highlight); }
+    .step-dot.current { background: var(--primary); transform: scale(1.4); }
+
+    .step-instruction {
+      margin: 22px 0 0;
+      font-size: clamp(36px, 5.4vw, 64px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      flex: 1;
+      display: flex; align-items: center;
+    }
+    .step-instruction.flash { animation: flash 320ms ease-out; }
+    @keyframes flash {
+      0%   { transform: translateX(0); opacity: 1; }
+      30%  { transform: translateX(-6px); opacity: .55; }
+      60%  { transform: translateX(4px); opacity: .9; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+
+    .speaking-indicator {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--accent); font-weight: 600; font-size: 13px;
+      margin-top: 10px;
+      opacity: 0; transition: opacity .2s;
+    }
+    .speaking-indicator.on { opacity: 1; }
+    .speaking-indicator .bar {
+      display: inline-block; width: 3px; height: 14px; border-radius: 2px;
+      background: var(--accent);
+      animation: bar 800ms ease-in-out infinite alternate;
+    }
+    .speaking-indicator .bar:nth-child(2) { animation-delay: 80ms; }
+    .speaking-indicator .bar:nth-child(3) { animation-delay: 160ms; }
+    .speaking-indicator .bar:nth-child(4) { animation-delay: 240ms; }
+    @keyframes bar {
+      from { transform: scaleY(.4); }
+      to   { transform: scaleY(1); }
+    }
+
+    .stage-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; flex-wrap: wrap;
+      margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line);
+      color: var(--text-secondary); font-size: 14px;
+    }
+    .stage-footer kbd {
+      display: inline-block; padding: 2px 7px; border-radius: 5px;
+      background: var(--bg-2); border: 1px solid var(--line);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px; color: var(--text); font-weight: 600;
+      margin: 0 2px;
+    }
+
+    /* ── Side: timer + ingredients ─────────────────────────────────── */
+    .side {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .timer-card {
+      background: linear-gradient(165deg, var(--primary), #9a330a);
+      color: #fff;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      position: relative; overflow: hidden;
+    }
+    .timer-card::after {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(circle at 30% 0%, rgba(255,255,255,.18), transparent 60%);
+      pointer-events: none;
+    }
+    .timer-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+      color: rgba(255,255,255,.7);
+    }
+    .timer-ring {
+      width: 168px; height: 168px;
+      position: relative;
+      display: grid; place-items: center;
+      margin: 4px 0;
+    }
+    .timer-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+    .timer-ring .track { stroke: rgba(255,255,255,.18); fill: none; stroke-width: 10; }
+    .timer-ring .progress {
+      stroke: #fff7ed; fill: none; stroke-width: 10; stroke-linecap: round;
+      transition: stroke-dashoffset .6s ease;
+    }
+    .timer-value {
+      font-size: 44px; font-weight: 800; letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      z-index: 1;
+    }
+    .timer-state {
+      font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(255,255,255,.85);
+    }
+    .timer-card.running { animation: pulse 1.2s ease-in-out infinite alternate; }
+    .timer-card.done { background: linear-gradient(165deg, #16a34a, #0f6b3a); }
+    @keyframes pulse {
+      from { box-shadow: 0 18px 50px -20px rgba(194, 65, 12, .35); }
+      to   { box-shadow: 0 18px 60px -10px rgba(251, 146, 60, .65); }
+    }
+
+    .ingredients {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px 20px;
+      box-shadow: 0 6px 22px -16px rgba(194, 65, 12, .4);
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .ingredients h3 {
+      margin: 0 0 12px;
+      font-size: 12px; font-weight: 700; letter-spacing: .18em;
+      color: var(--text-secondary); text-transform: uppercase;
+    }
+    .ingredients ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .ingredients li {
+      display: flex; justify-content: space-between; gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--line);
+      font-size: 14px;
+    }
+    .ingredients li:last-child { border-bottom: none; }
+    .ingredients .qty { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* ── Simulator panel ───────────────────────────────────────────── */
+    .sim-panel {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: rgba(255,255,255, .65);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      box-shadow: 0 8px 26px -22px rgba(0, 0, 0, .3);
+      backdrop-filter: blur(8px);
+    }
+    .sim-panel.disabled { pointer-events: none; opacity: 0.4; }
+    .sim-panel.disabled button { cursor: not-allowed; }
+    .sim-label {
+      color: var(--text-secondary); font-size: 11px; font-weight: 700;
+      letter-spacing: .18em; text-transform: uppercase; padding: 0 4px;
+    }
+    .sim-divider { width: 1px; height: 18px; background: var(--line); }
+    .btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-weight: 600; font-size: 13px;
+      cursor: pointer;
+      transition: background .15s, color .15s, transform .1s;
+    }
+    .btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn:active { transform: scale(.96); }
+    .btn-primary {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+
+    /* ── Footer (branding) ─────────────────────────────────────────── */
+    .footer-strip {
+      display: flex; justify-content: center; align-items: center;
+      gap: 8px;
+      color: var(--text-secondary); font-size: 12px;
+      padding-top: 4px;
+    }
+    .footer-strip .mudra-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(255,255,255, .6); border: 1px solid var(--line);
+      font-weight: 600;
+    }
+
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    .mudra-onb {
+      border: none;
+      padding: 0;
+      border-radius: 14px;
+      width: min(560px, 92vw);
+      max-height: min(82vh, 720px);
+      background: #fff;
+      color: #111;
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .35);
+      overflow: hidden;
+    }
+    .mudra-onb::backdrop { background: rgba(0, 0, 0, .55); }
+    .mudra-onb__head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 8px;
+    }
+    .mudra-onb__brand { display: inline-flex; align-items: center; gap: 8px; }
+    .mudra-onb__logo { display: block; width: 28px; height: 28px; flex: none; }
+    .mudra-onb__wordmark {
+      font-size: 12px; font-weight: 700; letter-spacing: .22em;
+      color: #0d9488; text-transform: uppercase;
+    }
+    .mudra-onb__title {
+      margin: 0; padding: 0 22px 14px;
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .mudra-onb__close {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: none; background: #1a1a1a; color: #fff;
+      width: 32px; height: 32px; border-radius: 50%;
+      font-size: 22px; line-height: 1; padding: 0; cursor: pointer;
+    }
+    .mudra-onb__body { padding: 4px 22px 8px; max-height: 56vh; overflow-y: auto; }
+    .mudra-onb__lede { margin: 0 0 12px; color: #555; }
+    .mudra-onb__actions { width: 100%; border-collapse: collapse; }
+    .mudra-onb__actions th, .mudra-onb__actions td {
+      text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: top;
+    }
+    .mudra-onb__actions th { font-size: 12px; text-transform: uppercase; color: #777; letter-spacing: .04em; }
+    .mudra-onb__actions td:nth-child(2) { color: #1a73e8; font-weight: 600; }
+    .mudra-onb__actions td:nth-child(3) { color: #444; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .mudra-onb__foot { padding: 14px 22px 20px; text-align: right; }
+    .mudra-onb__continue {
+      border: none; background: #1a1a1a; color: #fff;
+      padding: 9px 18px; border-radius: 999px; font-weight: 600; cursor: pointer;
+    }
+    .mudra-onb__reopen {
+      position: fixed; right: 16px; bottom: 16px; z-index: 9999;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: none; background: #1a1a1a; color: #fff;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    }
+    .mudra-onb--hidden, .mudra-onb__reopen--hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">🍋</div>
+      <div class="brand-text">Recipe Coach <small>One-Handed</small></div>
+    </div>
+    <div class="topbar-right">
+      <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+        <button id="modeManual" role="radio" aria-checked="true"  class="mode-opt active">Manual</button>
+        <button id="modeMudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+      </div>
+      <div id="connPill" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+    </div>
+  </header>
+
+  <!-- Main two-column stage -->
+  <main class="stage-wrap">
+    <section class="stage">
+      <div class="step-meta">
+        <span class="recipe-name" id="recipeName">Whiskey Sour</span>
+        <span class="step-counter">
+          <span>Step <span id="stepNum">1</span> / <span id="stepTotal">6</span></span>
+          <span class="step-dots" id="stepDots"></span>
+        </span>
+      </div>
+
+      <p class="step-instruction" id="stepInstruction">Fill a shaker with ice.</p>
+
+      <div class="speaking-indicator" id="speakingIndicator" aria-live="polite">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        <span>Reading step…</span>
+      </div>
+
+      <div class="stage-footer">
+        <span><strong>Tap</strong> next · <strong>2 Tap</strong> repeat · <strong>Twist</strong> timer</span>
+        <span>
+          <kbd>Space</kbd> next &nbsp;
+          <kbd>R</kbd> repeat &nbsp;
+          <kbd>T</kbd> timer
+        </span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="timer-card" id="timerCard">
+        <span class="timer-label">Step timer</span>
+        <div class="timer-ring">
+          <svg width="168" height="168" viewBox="0 0 168 168">
+            <circle class="track"    cx="84" cy="84" r="74"></circle>
+            <circle class="progress" id="timerProgress" cx="84" cy="84" r="74"
+                    stroke-dasharray="464.96" stroke-dashoffset="0"></circle>
+          </svg>
+          <span class="timer-value" id="timerValue">0:30</span>
+        </div>
+        <span class="timer-state" id="timerState">Twist to start</span>
+      </div>
+
+      <div class="ingredients">
+        <h3>Ingredients</h3>
+        <ul id="ingredientList"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Simulator panel (always visible, disabled in Mudra mode) -->
+  <div id="simPanel" class="sim-panel" aria-label="Signal simulator">
+    <span class="sim-label">Sim</span>
+    <button class="btn btn-primary" id="simTap"   title="Next step">Tap</button>
+    <button class="btn"             id="sim2Tap"  title="Repeat audio">2 Tap</button>
+    <span class="sim-divider"></span>
+    <button class="btn"             id="simTwist"  title="Start / pause timer">Twist</button>
+    <button class="btn"             id="sim2Twist" title="Reset step">2 Twist</button>
+  </div>
+
+  <div class="footer-strip">
+    <span class="mudra-badge">✦ Created by Mudra</span>
+  </div>
+
+  <!-- Onboarding modal — feature 005-onboarding-modal -->
+  <dialog id="mudra-onboarding" class="mudra-onb" data-app-name="Recipe Coach">
+    <header class="mudra-onb__head">
+      <div class="mudra-onb__brand">
+        <svg class="mudra-onb__logo" viewBox="0 0 32 32" aria-hidden="true">
+          <ellipse cx="16" cy="16" rx="13" ry="9" fill="none" stroke="#0d9488" stroke-width="2"/>
+          <circle cx="11" cy="16" r="1.6" fill="#14b8a6"/>
+          <circle cx="16" cy="16" r="1.6" fill="#14b8a6"/>
+          <circle cx="21" cy="16" r="1.6" fill="#14b8a6"/>
+        </svg>
+        <span class="mudra-onb__wordmark">MUDRA</span>
+      </div>
+      <button type="button" class="mudra-onb__close" aria-label="Close">×</button>
+    </header>
+    <h2 class="mudra-onb__title">Welcome to <span class="mudra-onb__name"></span></h2>
+    <section class="mudra-onb__body">
+      <p class="mudra-onb__lede">Step-by-step recipes with hands-free control. Keep your hands messy.</p>
+      <table class="mudra-onb__actions">
+        <thead><tr><th>Action</th><th>Mudra</th><th>Manual</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <footer class="mudra-onb__foot">
+      <button type="button" class="mudra-onb__continue">Got it</button>
+    </footer>
+  </dialog>
+  <button type="button" id="mudra-onboarding-help" class="mudra-onb__reopen" aria-label="Show controls">?</button>
+
+  <script>
+    /* ─────────────────────────────────────────────────────────────
+       Recipe data
+       ───────────────────────────────────────────────────────────── */
+    const RECIPE = {
+      name: "Whiskey Sour",
+      ingredients: [
+        { qty: "2 oz",   name: "Bourbon" },
+        { qty: "¾ oz",   name: "Fresh lemon juice" },
+        { qty: "½ oz",   name: "Simple syrup" },
+        { qty: "1",      name: "Egg white (optional)" },
+        { qty: "1",      name: "Lemon twist" },
+        { qty: "1",      name: "Maraschino cherry" },
+      ],
+      steps: [
+        { text: "Fill a shaker with ice.",                              timer: 0  },
+        { text: "Pour 2 oz bourbon over the ice.",                      timer: 0  },
+        { text: "Add ¾ oz fresh lemon juice and ½ oz simple syrup.",    timer: 0  },
+        { text: "Shake vigorously for thirty seconds.",                 timer: 30 },
+        { text: "Strain into a chilled rocks glass over fresh ice.",    timer: 0  },
+        { text: "Garnish with a lemon twist and a cherry. Serve.",      timer: 0  },
+      ],
+    };
+
+    /* ─────────────────────────────────────────────────────────────
+       App state
+       ───────────────────────────────────────────────────────────── */
+    let stepIndex = 0;
+
+    let timerSeconds = 0;       // remaining
+    let timerTotal   = 0;       // for the active step
+    let timerRunning = false;
+    let timerHandle  = null;
+
+    /* ─────────────────────────────────────────────────────────────
+       Mode + connection state
+       ───────────────────────────────────────────────────────────── */
+    const SUBSCRIBED_SIGNALS = ["gesture"];
+    let mode = "manual";
+    let connectionState = "idle";
+    let socket = null;
+    let connToken = 0;
+    let reconnectTimer = null;
+    let reconnectIndex = 0;
+    const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 5000, 5000];
+    let statusPollTimer = null;
+    const STATUS_POLL_MS = 2000;
+
+    /* ─────────────────────────────────────────────────────────────
+       Audio (Web Speech API)
+       ───────────────────────────────────────────────────────────── */
+    const speakIndicator = document.getElementById("speakingIndicator");
+    let currentUtterance = null;
+    function speak(text) {
+      if (!("speechSynthesis" in window)) return;
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.98; u.pitch = 1.0; u.volume = 1.0;
+      u.onstart = () => speakIndicator.classList.add("on");
+      u.onend = u.onerror = () => speakIndicator.classList.remove("on");
+      currentUtterance = u;
+      window.speechSynthesis.speak(u);
+    }
+    function stopSpeaking() {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      speakIndicator.classList.remove("on");
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Render: recipe + step
+       ───────────────────────────────────────────────────────────── */
+    const stepNumEl     = document.getElementById("stepNum");
+    const stepTotalEl   = document.getElementById("stepTotal");
+    const stepDotsEl    = document.getElementById("stepDots");
+    const stepInstrEl   = document.getElementById("stepInstruction");
+    const recipeNameEl  = document.getElementById("recipeName");
+    const ingredientUl  = document.getElementById("ingredientList");
+
+    function renderRecipe() {
+      recipeNameEl.textContent = RECIPE.name;
+      stepTotalEl.textContent = RECIPE.steps.length;
+      ingredientUl.innerHTML = "";
+      RECIPE.ingredients.forEach(i => {
+        const li = document.createElement("li");
+        const q = document.createElement("span"); q.className = "qty"; q.textContent = i.qty;
+        const n = document.createElement("span"); n.textContent = i.name;
+        li.appendChild(n); li.appendChild(q);
+        ingredientUl.appendChild(li);
+      });
+      stepDotsEl.innerHTML = "";
+      RECIPE.steps.forEach(() => {
+        const d = document.createElement("span"); d.className = "step-dot"; stepDotsEl.appendChild(d);
+      });
+    }
+
+    function renderStep(announce = true) {
+      const step = RECIPE.steps[stepIndex];
+      stepNumEl.textContent = stepIndex + 1;
+      stepInstrEl.textContent = step.text;
+      stepInstrEl.classList.remove("flash");
+      // force reflow to retrigger animation
+      void stepInstrEl.offsetWidth;
+      stepInstrEl.classList.add("flash");
+
+      // dots
+      Array.from(stepDotsEl.children).forEach((d, i) => {
+        d.classList.remove("done", "current");
+        if (i < stepIndex) d.classList.add("done");
+        if (i === stepIndex) d.classList.add("current");
+      });
+
+      // timer reset to this step's default
+      timerTotal = step.timer || 0;
+      timerSeconds = timerTotal;
+      stopTimer({ silent: true });
+      renderTimer();
+
+      if (announce) speak(step.text);
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Step navigation
+       ───────────────────────────────────────────────────────────── */
+    function nextStep() {
+      if (stepIndex < RECIPE.steps.length - 1) {
+        stepIndex++;
+        renderStep();
+      } else {
+        // already last step
+        stepInstrEl.classList.remove("flash");
+        void stepInstrEl.offsetWidth;
+        stepInstrEl.classList.add("flash");
+      }
+    }
+    function repeatStep() { speak(RECIPE.steps[stepIndex].text); }
+
+    function resetCurrentStep() {
+      stopTimer({ silent: true });
+      timerTotal = RECIPE.steps[stepIndex].timer || 0;
+      timerSeconds = timerTotal;
+      renderTimer();
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Timer
+       ───────────────────────────────────────────────────────────── */
+    const timerCard    = document.getElementById("timerCard");
+    const timerValueEl = document.getElementById("timerValue");
+    const timerStateEl = document.getElementById("timerState");
+    const timerProgress = document.getElementById("timerProgress");
+    const TIMER_CIRCUMFERENCE = 2 * Math.PI * 74; // r=74
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const ss = (s % 60).toString().padStart(2, "0");
+      return `${m}:${ss}`;
+    }
+
+    function renderTimer() {
+      const total = timerTotal || RECIPE.steps[stepIndex].timer || 30; // fallback for visual
+      const shown = timerTotal ? timerSeconds : 0;
+      timerValueEl.textContent = formatTime(timerTotal ? timerSeconds : 0);
+
+      const frac = total > 0 ? shown / total : 0;
+      timerProgress.style.strokeDasharray = TIMER_CIRCUMFERENCE.toFixed(2);
+      timerProgress.style.strokeDashoffset = (TIMER_CIRCUMFERENCE * (1 - frac)).toFixed(2);
+
+      timerCard.classList.toggle("running", timerRunning);
+      timerCard.classList.toggle("done", timerTotal > 0 && timerSeconds === 0 && !timerRunning && stepHasTimer());
+
+      if (!stepHasTimer()) {
+        timerStateEl.textContent = "No timer this step";
+      } else if (timerRunning) {
+        timerStateEl.textContent = "Running — twist to pause";
+      } else if (timerSeconds === 0 && timerTotal > 0) {
+        timerStateEl.textContent = "Done";
+      } else if (timerSeconds === timerTotal) {
+        timerStateEl.textContent = "Twist to start";
+      } else {
+        timerStateEl.textContent = "Paused — twist to resume";
+      }
+    }
+
+    function stepHasTimer() { return (RECIPE.steps[stepIndex].timer || 0) > 0; }
+
+    function tickTimer() {
+      if (!timerRunning) return;
+      timerSeconds = Math.max(0, timerSeconds - 1);
+      renderTimer();
+      if (timerSeconds === 0) {
+        stopTimer({ silent: false });
+        speak("Time's up.");
+      }
+    }
+
+    function startTimer() {
+      if (!stepHasTimer()) return;
+      if (timerSeconds === 0) timerSeconds = timerTotal; // restart from full
+      timerRunning = true;
+      if (timerHandle) clearInterval(timerHandle);
+      timerHandle = setInterval(tickTimer, 1000);
+      renderTimer();
+    }
+
+    function pauseTimer() {
+      timerRunning = false;
+      if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+      renderTimer();
+    }
+
+    function stopTimer({ silent } = { silent: true }) {
+      timerRunning = false;
+      if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+      if (!silent) renderTimer();
+    }
+
+    function toggleTimer() {
+      if (!stepHasTimer()) return;
+      if (timerRunning) pauseTimer(); else startTimer();
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Signal dispatch — single entry point (synthetic and real)
+       ───────────────────────────────────────────────────────────── */
+    function dispatch(msg) {
+      switch (msg.type) {
+        case "gesture":           return handleGesture(msg.data);
+        case "connection_status": return handleConnectionStatus(msg.data);
+        case "status":            return handleStatus(msg.data);
+        default: /* ignore */     return;
+      }
+    }
+
+    function handleGesture(data) {
+      const t = data && data.type;
+      if (t === "tap")            nextStep();
+      else if (t === "double_tap") repeatStep();
+      else if (t === "twist")     toggleTimer();
+      else if (t === "double_twist") resetCurrentStep();
+    }
+
+    function handleStatus(data) {
+      if (mode !== "mudra") return;
+      const deviceState = data && data.device && data.device.state;
+      if (deviceState === "connected") setState("connected");
+      else                             setState("disconnected");
+    }
+    function handleConnectionStatus(data) {
+      if (mode !== "mudra") return;
+      if (data && data.status === "disconnected") setState("disconnected");
+      if (data && data.status === "connected" && socket && socket.readyState === 1) {
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Continuous-state reset (no continuous signals here)
+       ───────────────────────────────────────────────────────────── */
+    function resetContinuousState() {
+      // No continuous signals subscribed in this app.
+      // We do stop the timer / speech so a mode flip never leaves the kitchen running.
+      stopTimer({ silent: true });
+      stopSpeaking();
+      timerSeconds = timerTotal;
+    }
+    function rerenderContinuousVisuals() { renderTimer(); }
+
+    /* ─────────────────────────────────────────────────────────────
+       Connection-state UI
+       ───────────────────────────────────────────────────────────── */
+    function setState(next) {
+      connectionState = next;
+      const pill = document.getElementById("connPill");
+      pill.classList.remove("conn-manual", "conn-connecting", "conn-connected", "conn-disconnected");
+      if (mode === "manual")               { pill.classList.add("conn-manual");        pill.textContent = "Manual mode"; return; }
+      if (next === "connecting")           { pill.classList.add("conn-connecting");    pill.textContent = "Connecting…"; }
+      else if (next === "connected")       { pill.classList.add("conn-connected");     pill.textContent = "Connected"; reconnectIndex = 0; }
+      else if (next === "disconnected")    { pill.classList.add("conn-disconnected");  pill.textContent = "Disconnected"; }
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Socket lifecycle — lazy (open only in Mudra)
+       ───────────────────────────────────────────────────────────── */
+    function openSocket() {
+      closeSocket();
+      const myToken = ++connToken;
+      setState("connecting");
+      let ws;
+      try { ws = new WebSocket("ws://127.0.0.1:8766"); }
+      catch (e) {
+        setState("disconnected");
+        scheduleReconnect();
+        return;
+      }
+      ws.onopen = () => {
+        if (myToken !== connToken) { try { ws.close(); } catch (_) {} return; }
+        socket = ws;
+        SUBSCRIBED_SIGNALS.forEach(sig =>
+          ws.send(JSON.stringify({ command: "subscribe", signal: sig }))
+        );
+        ws.send(JSON.stringify({ command: "get_status" }));
+        startStatusPoll();
+      };
+      ws.onmessage = (e) => {
+        try { dispatch(JSON.parse(e.data)); }
+        catch (_) { /* ignore malformed */ }
+      };
+      ws.onclose = ws.onerror = () => {
+        if (myToken !== connToken) return;
+        socket = null;
+        stopStatusPoll();
+        if (mode === "mudra") {
+          setState("disconnected");
+          scheduleReconnect();
+        }
+      };
+    }
+    function closeSocket() {
+      connToken++;
+      if (socket) { try { socket.close(); } catch (_) {} socket = null; }
+      cancelReconnect();
+      stopStatusPoll();
+    }
+    function scheduleReconnect() {
+      if (mode !== "mudra") return;
+      const delay = RECONNECT_DELAYS_MS[Math.min(reconnectIndex, RECONNECT_DELAYS_MS.length - 1)];
+      reconnectIndex++;
+      cancelReconnect();
+      reconnectTimer = setTimeout(() => { if (mode === "mudra") openSocket(); }, delay);
+    }
+    function cancelReconnect() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    function startStatusPoll() {
+      stopStatusPoll();
+      statusPollTimer = setInterval(() => {
+        if (mode !== "mudra" || !socket || socket.readyState !== 1) return;
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }, STATUS_POLL_MS);
+    }
+    function stopStatusPoll() {
+      if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Mode toggle
+       ───────────────────────────────────────────────────────────── */
+    function setMode(next) {
+      if (next === mode) return;
+      mode = next;
+      resetContinuousState();
+      rerenderContinuousVisuals();
+      if (mode === "mudra") openSocket(); else closeSocket();
+
+      const sim = document.getElementById("simPanel");
+      sim.classList.toggle("disabled", mode === "mudra");
+      sim.querySelectorAll("button").forEach(b => {
+        b.setAttribute("aria-disabled", mode === "mudra" ? "true" : "false");
+        b.tabIndex = mode === "mudra" ? -1 : 0;
+      });
+      const mm = document.getElementById("modeManual");
+      const mu = document.getElementById("modeMudra");
+      mm.setAttribute("aria-checked", mode === "manual");
+      mu.setAttribute("aria-checked", mode === "mudra");
+      mm.classList.toggle("active", mode === "manual");
+      mu.classList.toggle("active", mode === "mudra");
+
+      setState(mode === "manual" ? "idle" : "connecting");
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Simulator panel — emit via dispatch() to the SAME pipeline
+       ───────────────────────────────────────────────────────────── */
+    function simGesture(type) {
+      // In Manual mode: synthesize locally through dispatch().
+      // In Mudra mode the panel is disabled and this isn't reachable.
+      dispatch({
+        type: "gesture",
+        data: { type, confidence: 1.0, timestamp: Date.now() },
+        timestamp: Date.now(),
+      });
+    }
+    document.getElementById("simTap").onclick    = () => simGesture("tap");
+    document.getElementById("sim2Tap").onclick   = () => simGesture("double_tap");
+    document.getElementById("simTwist").onclick  = () => simGesture("twist");
+    document.getElementById("sim2Twist").onclick = () => simGesture("double_twist");
+
+    /* ─────────────────────────────────────────────────────────────
+       Keyboard fallback — gated in Mudra mode
+       ───────────────────────────────────────────────────────────── */
+    document.addEventListener("keydown", (e) => {
+      if (mode === "mudra") return;            // gate per spec
+      // ignore when typing in inputs
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      if (e.code === "Space")        { e.preventDefault(); simGesture("tap"); }
+      else if (e.key === "r" || e.key === "R") { simGesture("double_tap"); }
+      else if (e.key === "t" || e.key === "T") { simGesture("twist"); }
+      else if (e.key === "x" || e.key === "X") { simGesture("double_twist"); }
+    });
+
+    /* ─────────────────────────────────────────────────────────────
+       Wire mode toggle
+       ───────────────────────────────────────────────────────────── */
+    document.getElementById("modeManual").onclick = () => setMode("manual");
+    document.getElementById("modeMudra").onclick  = () => setMode("mudra");
+
+    /* ─────────────────────────────────────────────────────────────
+       Initial render
+       ───────────────────────────────────────────────────────────── */
+    renderRecipe();
+    renderStep(/* announce */ false);  // initial: don't auto-speak before user gesture
+
+    /* === Onboarding modal — feature 005-onboarding-modal ============ */
+    (() => {
+      const ACTIONS = [
+        { label: "Next step",         mudra: "gesture: tap",         manual: "Space" },
+        { label: "Repeat step audio", mudra: "gesture: double_tap",  manual: "R" },
+        { label: "Start / pause step timer", mudra: "gesture: twist", manual: "T" },
+        { label: "Reset current step", mudra: "gesture: double_twist", manual: "X" },
+      ];
+
+      const dialog = document.getElementById("mudra-onboarding");
+      const reopen = document.getElementById("mudra-onboarding-help");
+      if (!dialog || !reopen) return;
+
+      const nameEl = dialog.querySelector(".mudra-onb__name");
+      const override = dialog.dataset.appName && dialog.dataset.appName.trim();
+      if (override) {
+        nameEl.textContent = override;
+      } else {
+        const base = (location.pathname.split("/").pop() || "").replace(/\.html?$/i, "");
+        const pretty = base.replace(/[-_]+/g, " ").trim()
+          .split(/\s+/).map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : "").join(" ");
+        nameEl.textContent = pretty || "Mudra App";
+      }
+
+      const tbody = dialog.querySelector(".mudra-onb__actions tbody");
+      ACTIONS.forEach(a => {
+        if (a.mudra == null && a.manual == null) return;
+        const tr = document.createElement("tr");
+        const td = (text) => { const c = document.createElement("td"); c.textContent = text; return c; };
+        tr.appendChild(td(a.label));
+        tr.appendChild(td(a.mudra == null ? "—" : a.mudra));
+        tr.appendChild(td(a.manual == null ? "—" : a.manual));
+        tbody.appendChild(tr);
+      });
+
+      const close = () => dialog.close();
+      dialog.querySelector(".mudra-onb__close").addEventListener("click", close);
+      dialog.querySelector(".mudra-onb__continue").addEventListener("click", close);
+      reopen.addEventListener("click", () => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      requestAnimationFrame(() => {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        else dialog.setAttribute("open", "");
+      });
+
+      const setHidden = (h) => {
+        dialog.classList.toggle("mudra-onb--hidden", h);
+        reopen.classList.toggle("mudra-onb__reopen--hidden", h);
+        if (h && dialog.open) dialog.close();
+      };
+      ["xrsession-start", "vr-session-start", "ar-session-start"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(true)));
+      ["xrsession-end", "vr-session-end", "ar-session-end"].forEach(ev =>
+        window.addEventListener(ev, () => setHidden(false)));
+    })();
+  </script>
+</body>
+</html>

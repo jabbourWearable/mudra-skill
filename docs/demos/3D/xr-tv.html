@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>XR TV · Mudra</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+        "lit": "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js",
+        "lit/": "https://esm.run/lit@3/",
+        "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/xrblocks.js",
+        "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/addons/"
+      }
+    }
+    </script>
+
+    <style>
+      :root {
+        --bg: linear-gradient(135deg, #1a1428 0%, #0d0e1c 100%);
+        --card: rgba(32, 25, 47, 0.78);
+        --primary: #ff8a3d;
+        --accent: #6fdcff;
+        --text: #f4ecde;
+        --text-secondary: #a394b3;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --error: #f87171;
+      }
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      body {
+        font-family: 'Poppins', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      /* === Combined top bar (mode toggle + connection pill) === */
+      #topbar {
+        position: fixed;
+        top: 12px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; align-items: center; gap: 12px;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 999px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        z-index: 30;
+        font-family: 'Poppins', system-ui, sans-serif;
+        border: 1px solid rgba(255,255,255,0.05);
+      }
+      .mode-toggle {
+        display: inline-flex; gap: 4px;
+        background: rgba(13, 14, 28, 0.6);
+        padding: 3px;
+        border-radius: 999px;
+        border: 1px solid var(--text-secondary);
+      }
+      .mode-opt {
+        background: transparent;
+        color: var(--text-secondary);
+        border: none;
+        padding: 6px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        font-family: inherit;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .mode-opt.active {
+        background: var(--primary);
+        color: #1a1428;
+        box-shadow: 0 2px 8px rgba(255,138,61,0.5);
+      }
+      .conn-pill {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        font-family: inherit;
+      }
+      .conn-manual       { background: transparent;    color: var(--text-secondary); border-color: var(--text-secondary); }
+      .conn-connecting   { background: var(--warning); color: #1a1428; }
+      .conn-connected    { background: var(--success); color: #1a1428; }
+      .conn-disconnected { background: var(--error);   color: #1a1428; }
+
+      /* === Simulator pill bar === */
+      #mudra-sim {
+        position: fixed;
+        bottom: 16px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; gap: 6px; align-items: center;
+        background: var(--card);
+        backdrop-filter: blur(10px);
+        padding: 8px 10px;
+        border-radius: 999px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+        z-index: 25;
+        font-family: 'Poppins', system-ui, sans-serif;
+        border: 1px solid rgba(255,255,255,0.05);
+      }
+      #mudra-sim .lbl {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0 8px 0 4px;
+      }
+      #mudra-sim .div {
+        width: 1px; height: 18px;
+        background: var(--text-secondary);
+        opacity: 0.3;
+        margin: 0 4px;
+      }
+      #mudra-sim .btn {
+        background: rgba(13, 14, 28, 0.6);
+        color: var(--text);
+        border: 1px solid var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      #mudra-sim .btn:hover { background: var(--primary); color: #1a1428; border-color: var(--primary); }
+      #mudra-sim .btn:active { transform: scale(0.95); }
+      #mudra-sim.disabled { pointer-events: none; opacity: 0.4; }
+      #mudra-sim.disabled .btn { cursor: not-allowed; }
+
+      /* === Onboarding overlay (multi-step) === */
+      #onboarding-overlay {
+        position: fixed; inset: 0;
+        display: flex; justify-content: center; align-items: center;
+        z-index: 40;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(6px);
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+      .onboarding-panel {
+        position: relative;
+        background: var(--card);
+        backdrop-filter: blur(14px);
+        border-radius: 28px;
+        padding: 36px 40px 28px;
+        width: min(560px, 92vw);
+        max-height: 88vh;
+        overflow-y: auto;
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: var(--text);
+      }
+      .ob-title {
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--text);
+        margin: 0 0 22px 0;
+        letter-spacing: 0.3px;
+      }
+      .ob-close {
+        position: absolute;
+        top: 18px; right: 18px;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.55);
+        color: var(--text);
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s ease;
+      }
+      .ob-close:hover { background: rgba(0,0,0,0.8); }
+      .ob-body h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 10px 0;
+      }
+      .ob-body p {
+        font-size: 14.5px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+        margin: 0 0 14px 0;
+      }
+      .ob-body ul {
+        margin: 8px 0 0 0;
+        padding-left: 22px;
+        color: var(--text-secondary);
+        font-size: 14.5px;
+        line-height: 1.7;
+      }
+      .ob-body li { margin-bottom: 6px; }
+      .ob-body li strong { color: var(--text); font-weight: 700; }
+      .ob-body .kbd {
+        display: inline-block;
+        background: rgba(13, 14, 28, 0.6);
+        border: 1px solid var(--text-secondary);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        padding: 1px 7px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: var(--text);
+        margin: 0 2px;
+      }
+      .ob-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 24px;
+        gap: 12px;
+      }
+      .ob-counter {
+        font-size: 12px;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+      }
+      .ob-actions { display: flex; gap: 8px; }
+      .ob-back {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--text-secondary);
+        padding: 9px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      .ob-back:hover { color: var(--text); border-color: var(--text); }
+      .ob-next {
+        background: var(--primary);
+        color: #1a1428;
+        border: none;
+        padding: 10px 22px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 4px 14px rgba(255,138,61,0.45);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .ob-next:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,138,61,0.6); }
+      .ob-next:active { transform: translateY(1px); }
+
+      /* === Mudra badge === */
+      .mudra-badge {
+        position: fixed;
+        bottom: 56px;
+        right: 14px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        opacity: 0.75;
+        font-family: inherit;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+        z-index: 5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Combined top bar: mode toggle + connection pill -->
+    <div id="topbar">
+      <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+        <button id="mode-manual" role="radio" aria-checked="true" class="mode-opt active">Manual</button>
+        <button id="mode-mudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+      </div>
+      <div id="mudra-status" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+    </div>
+
+    <!-- Simulator pill bar -->
+    <div id="mudra-sim" aria-label="Mudra signal simulator">
+      <span class="lbl">Direction</span>
+      <button class="btn" id="sim-up" title="Channel up">↑</button>
+      <button class="btn" id="sim-down" title="Channel down">↓</button>
+      <button class="btn" id="sim-left" title="Volume down">←</button>
+      <button class="btn" id="sim-right" title="Volume up">→</button>
+      <span class="div"></span>
+      <span class="lbl">Gesture</span>
+      <button class="btn" id="sim-tap" title="Power">Tap</button>
+    </div>
+
+    <!-- Onboarding overlay (multi-step, bespoke per app — re-shown every load) -->
+    <div id="onboarding-overlay">
+      <div class="onboarding-panel">
+        <button class="ob-close" id="ob-close" aria-label="Close">×</button>
+        <h1 class="ob-title">Welcome to Mudra Band</h1>
+
+        <div class="ob-body" id="ob-step-1">
+          <h2>📺 XR TV</h2>
+          <p>A floating television you flick through with your wrist — change the channel with a flick of your hand, adjust the volume sideways, and tap to power it on or off.</p>
+          <p>The app starts in <strong>Manual mode</strong> so you can practice with on-screen buttons and the keyboard. When your Mudra Band is paired, click <strong>Mudra</strong> in the top bar to drive the TV from your wrist instead.</p>
+        </div>
+
+        <div class="ob-body" id="ob-step-2" hidden>
+          <h2>Controls</h2>
+          <p>Three gestures drive this app. Each one is also wired to a keyboard shortcut and a button in the simulator pill bar at the bottom.</p>
+          <ul>
+            <li><strong>Power on/off:</strong> pinch (tap) on your band — keyboard: <span class="kbd">Space</span> — sim panel: <strong>Tap</strong>.</li>
+            <li><strong>Change channel:</strong> swipe <span class="kbd">↑</span> / <span class="kbd">↓</span> with your wrist — keyboard: <span class="kbd">↑</span> / <span class="kbd">↓</span> — sim panel: <strong>↑</strong> / <strong>↓</strong>.</li>
+            <li><strong>Adjust volume:</strong> swipe <span class="kbd">←</span> / <span class="kbd">→</span> with your wrist — keyboard: <span class="kbd">←</span> / <span class="kbd">→</span> — sim panel: <strong>←</strong> / <strong>→</strong>.</li>
+          </ul>
+        </div>
+
+        <div class="ob-body" id="ob-step-3" hidden>
+          <h2>Practice without a band</h2>
+          <p>You don't need a paired Mudra Band to try this app. While you're in Manual mode, every control above is available from your keyboard and the simulator pill bar at the bottom of the screen.</p>
+          <ul>
+            <li><strong>Simulator panel:</strong> the pill bar at the bottom of the screen has one button per action — click <strong>Tap</strong>, <strong>↑</strong>, <strong>↓</strong>, <strong>←</strong>, <strong>→</strong> to fire the matching Mudra signal.</li>
+            <li><strong>Keyboard:</strong> <span class="kbd">Space</span> taps, <span class="kbd">↑</span> / <span class="kbd">↓</span> change channel, <span class="kbd">←</span> / <span class="kbd">→</span> change volume. While this dialog is open, <span class="kbd">Page Up</span> / <span class="kbd">Page Down</span> step through it and <span class="kbd">Esc</span> closes it at any time.</li>
+            <li><strong>Switch to Mudra mode:</strong> when your band is paired, click <strong>Mudra</strong> in the top bar. The simulator greys out and your wrist takes over.</li>
+          </ul>
+        </div>
+
+        <div class="ob-footer">
+          <span class="ob-counter" id="ob-counter">1 of 3</span>
+          <div class="ob-actions">
+            <button class="ob-back" id="ob-back" hidden>Back</button>
+            <button class="ob-next" id="ob-next">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mudra badge -->
+    <div class="mudra-badge">Created by Mudra</div>
+
+    <script type="module">
+import * as THREE from 'three';
+import * as xb from 'xrblocks';
+
+/* ============================================================
+ * MudraClient (verbatim per xr_build_rules.md §4)
+ * ============================================================ */
+class MudraClient {
+  constructor(url) {
+    this._url = url;
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._mode = 'manual';
+    this._state = 'idle';
+    this._ws = null;
+    this._statusPoll = null;
+    this._reconnectTimer = null;
+    this._reconnectIdx = 0;
+    this._connToken = 0;
+  }
+  on(signal, fn) { this._handlers[signal] = fn; }
+  subscribe(signal) {
+    this._subscriptions.add(signal);
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+    }
+  }
+  send(cmd) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify(cmd));
+    } else if (this._mode === 'manual' && cmd.command === 'trigger_gesture') {
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 1.0, timestamp: Date.now() } });
+    }
+  }
+  setMode(mode) {
+    if (mode !== 'manual' && mode !== 'mudra') return;
+    if (mode === this._mode) return;
+    this._mode = mode;
+    this._connToken++;
+    this._stopStatusPoll();
+    this._clearReconnect();
+    if (this._ws) {
+      try { this._ws.close(); } catch (_) {}
+      this._ws = null;
+    }
+    if (mode === 'manual') {
+      this._setState('idle');
+    } else {
+      this._openSocket();
+    }
+  }
+  emitSynthetic(payload) { this._emit(payload); }
+  get state() { return this._state; }
+  get mode() { return this._mode; }
+
+  _openSocket() {
+    const token = this._connToken;
+    this._setState('connecting');
+    try {
+      const ws = new WebSocket(this._url);
+      this._ws = ws;
+      ws.onopen = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') { try { ws.close(); } catch (_) {} return; }
+        for (const sig of this._subscriptions) {
+          ws.send(JSON.stringify({ command: 'subscribe', signal: sig }));
+        }
+        ws.send(JSON.stringify({ command: 'get_status' }));
+        this._startStatusPoll();
+      };
+      ws.onmessage = (e) => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        let msg; try { msg = JSON.parse(e.data); } catch (_) { return; }
+        if (msg.type === 'status') {
+          const ok = msg.data?.device?.state === 'connected';
+          this._setState(ok ? 'connected' : 'disconnected');
+          return;
+        }
+        if (msg.type === 'connection_status') {
+          if (msg.data?.status === 'disconnected') this._setState('disconnected');
+          else if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify({ command: 'get_status' }));
+          }
+          return;
+        }
+        this._emit(msg);
+      };
+      ws.onerror = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        this._setState('disconnected');
+        this._stopStatusPoll();
+        this._scheduleReconnect();
+      };
+      ws.onclose = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        this._setState('disconnected');
+        this._stopStatusPoll();
+        this._scheduleReconnect();
+      };
+    } catch (_) {
+      this._setState('disconnected');
+      this._scheduleReconnect();
+    }
+  }
+  _startStatusPoll() {
+    this._stopStatusPoll();
+    this._statusPoll = setInterval(() => {
+      if (this._mode !== 'mudra') { this._stopStatusPoll(); return; }
+      if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+        this._ws.send(JSON.stringify({ command: 'get_status' }));
+      }
+    }, 2000);
+  }
+  _stopStatusPoll() { if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; } }
+  _scheduleReconnect() {
+    this._clearReconnect();
+    const delays = [1000, 2000, 5000, 5000, 5000];
+    const delay = delays[Math.min(this._reconnectIdx, delays.length - 1)];
+    this._reconnectIdx++;
+    const token = this._connToken;
+    this._reconnectTimer = setTimeout(() => {
+      if (token !== this._connToken || this._mode !== 'mudra') return;
+      this._openSocket();
+    }, delay);
+  }
+  _clearReconnect() { if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; } }
+  _setState(s) {
+    if (s === 'connected') this._reconnectIdx = 0;
+    if (s === this._state) return;
+    this._state = s;
+    if (this._handlers['_status']) this._handlers['_status'](s);
+  }
+  _emit(msg) {
+    const h = this._handlers[msg.type];
+    if (h) h(msg.data);
+  }
+}
+
+const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+/* ============================================================
+ * Channel definitions — each channel is a procedural shader scene
+ * ============================================================ */
+const CHANNELS = [
+  { id: 0, name: 'NEWS 24',     tag: 'BREAKING' },
+  { id: 1, name: 'NATURE HD',   tag: 'WILDLIFE' },
+  { id: 2, name: 'SPORTS CTR',  tag: 'LIVE'     },
+  { id: 3, name: 'SYNTH FM',    tag: 'MUSIC'    },
+  { id: 4, name: 'GAME ZONE',   tag: 'PLAY'     },
+];
+
+/* ============================================================
+ * TV screen shader — branches on uChannel + uPower
+ * ============================================================ */
+const SCREEN_VS = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const SCREEN_FS = /* glsl */ `
+  precision mediump float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform float uChannel;
+  uniform float uPower;       // 0..1 boot animation + on/off
+  uniform float uTuning;      // 0..1 static flash on channel change
+
+  float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
+  // ---- channel 0: NEWS ----
+  vec3 chNews(vec2 uv) {
+    vec3 sky = mix(vec3(0.05, 0.08, 0.18), vec3(0.12, 0.22, 0.45), 1.0 - uv.y);
+    // anchor silhouette
+    float anchorX = uv.x - 0.5;
+    float anchorY = uv.y - 0.35;
+    float head = smoothstep(0.13, 0.11, length(vec2(anchorX, anchorY - 0.10)));
+    float body = smoothstep(0.40, 0.36, length(vec2(anchorX * 1.6, max(anchorY + 0.25, 0.0))));
+    vec3 silhouette = mix(sky, vec3(0.02, 0.04, 0.10), max(head, body));
+    // lower-third banner
+    float banner = step(0.06, uv.y) * step(uv.y, 0.18);
+    vec3 col = mix(silhouette, vec3(0.85, 0.10, 0.10), banner);
+    // ticker
+    float tick = step(0.02, uv.y) * step(uv.y, 0.05);
+    float ticker = step(0.5, fract(uv.x * 18.0 - uTime * 0.6));
+    col = mix(col, mix(vec3(0.05), vec3(0.95), ticker), tick);
+    return col;
+  }
+
+  // ---- channel 1: NATURE ----
+  vec3 chNature(vec2 uv) {
+    // sky gradient
+    vec3 sky = mix(vec3(0.95, 0.78, 0.55), vec3(0.36, 0.62, 0.85), uv.y);
+    // sun
+    vec2 sunPos = vec2(0.75, 0.65);
+    float sun = smoothstep(0.12, 0.08, length(uv - sunPos));
+    sky = mix(sky, vec3(1.0, 0.92, 0.65), sun);
+    // hills (rolling sin waves)
+    float h1 = 0.35 + 0.08 * sin(uv.x * 4.0 + uTime * 0.2);
+    float h2 = 0.28 + 0.06 * sin(uv.x * 7.0 - uTime * 0.3 + 1.5);
+    vec3 hill1 = vec3(0.22, 0.45, 0.20);
+    vec3 hill2 = vec3(0.12, 0.30, 0.14);
+    vec3 col = sky;
+    col = mix(col, hill1, step(uv.y, h1));
+    col = mix(col, hill2, step(uv.y, h2));
+    return col;
+  }
+
+  // ---- channel 2: SPORTS ----
+  vec3 chSports(vec2 uv) {
+    // green field with diagonal stripes
+    vec3 sky = mix(vec3(0.55, 0.78, 0.95), vec3(0.30, 0.55, 0.85), uv.y);
+    float horizon = step(uv.y, 0.45);
+    float stripe = step(0.5, fract((uv.x + uTime * 0.05) * 6.0));
+    vec3 field = mix(vec3(0.16, 0.55, 0.20), vec3(0.20, 0.62, 0.24), stripe);
+    vec3 col = mix(sky, field, horizon);
+    // ball
+    vec2 ballPos = vec2(0.5 + 0.25 * sin(uTime * 1.4), 0.25 + 0.08 * abs(sin(uTime * 2.4)));
+    float ball = smoothstep(0.045, 0.038, length(uv - ballPos));
+    col = mix(col, vec3(0.98, 0.95, 0.30), ball);
+    return col;
+  }
+
+  // ---- channel 3: SYNTH MUSIC ----
+  vec3 chMusic(vec2 uv) {
+    // dark gradient
+    vec3 bg = mix(vec3(0.06, 0.02, 0.18), vec3(0.30, 0.05, 0.40), uv.y);
+    // bottom horizon glow
+    float glow = exp(-uv.y * 6.0) * 0.8;
+    bg += vec3(0.95, 0.20, 0.55) * glow;
+    // vertical equalizer bars
+    float idx = floor(uv.x * 12.0);
+    float barH = 0.10 + 0.45 * (0.5 + 0.5 * sin(uTime * (2.0 + idx * 0.4) + idx));
+    float inBar = step(0.12, fract(uv.x * 12.0)) * step(fract(uv.x * 12.0), 0.88);
+    float belowTop = step(uv.y, barH);
+    float bar = inBar * belowTop * step(0.05, uv.y);
+    vec3 barCol = mix(vec3(1.0, 0.85, 0.30), vec3(0.40, 0.95, 1.0), uv.y / max(barH, 0.001));
+    return mix(bg, barCol, bar);
+  }
+
+  // ---- channel 4: GAME ----
+  vec3 chGame(vec2 uv) {
+    vec3 bg = vec3(0.02, 0.02, 0.05);
+    // grid floor
+    vec2 g = uv;
+    g.y = 1.0 - g.y;
+    float perspective = mix(8.0, 40.0, smoothstep(0.0, 0.55, g.y));
+    float gx = fract((g.x - 0.5) * perspective + 0.5);
+    float gy = fract((g.y + uTime * 0.4) * perspective);
+    float line = smoothstep(0.95, 1.0, gx) + smoothstep(0.95, 1.0, gy);
+    line *= step(g.y, 0.55);
+    vec3 grid = vec3(1.0, 0.20, 0.65);
+    // sun above grid
+    vec2 sunPos = vec2(0.5, 0.62);
+    float sun = smoothstep(0.18, 0.13, length(uv - sunPos));
+    float band = step(0.5, fract((uv.y - 0.62) * 25.0));
+    bg = mix(bg, mix(vec3(1.0, 0.55, 0.10), vec3(0.95, 0.15, 0.45), 1.0 - uv.y), sun * band);
+    return bg + grid * line;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+
+    // pick channel content
+    vec3 col;
+    int c = int(uChannel + 0.5);
+         if (c == 0) col = chNews(uv);
+    else if (c == 1) col = chNature(uv);
+    else if (c == 2) col = chSports(uv);
+    else if (c == 3) col = chMusic(uv);
+    else             col = chGame(uv);
+
+    // scanline tint
+    float scan = 0.92 + 0.08 * sin(uv.y * 600.0);
+    col *= scan;
+
+    // mild vignette
+    float v = smoothstep(0.95, 0.4, distance(uv, vec2(0.5)));
+    col *= v;
+
+    // channel-change static flash
+    float n = hash(uv * 800.0 + uTime * 60.0);
+    col = mix(col, vec3(n), uTuning);
+
+    // power: shrink to a horizontal line then fade to black
+    float p = clamp(uPower, 0.0, 1.0);
+    float band = smoothstep(0.49 - 0.5 * p, 0.50, uv.y) * smoothstep(0.51 + 0.5 * p, 0.50, uv.y);
+    col = mix(vec3(0.0), col, p);
+    col += band * (1.0 - p) * vec3(0.7, 0.8, 0.9);
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+/* ============================================================
+ * Main XR Blocks scene
+ * ============================================================ */
+class XRTv extends xb.Script {
+  init() {
+    // ambient light so the bezel reads well
+    this.add(new THREE.HemisphereLight(0xffffff, 0x222233, 1.2));
+    const key = new THREE.DirectionalLight(0xffffff, 0.7);
+    key.position.set(2, 3, 2);
+    this.add(key);
+
+    // TV root group — anchored in front of user
+    this.tv = new THREE.Group();
+    const baseHeight = (xb.user && typeof xb.user.height === 'number') ? xb.user.height : 1.6;
+    const distance = (xb.user && typeof xb.user.objectDistance === 'number') ? xb.user.objectDistance : 1.8;
+    this.tv.position.set(0, baseHeight - 0.15, -distance - 0.3);
+    this.add(this.tv);
+
+    // dimensions (16:9)
+    const W = 2.0, H = 2.0 * (9 / 16);
+
+    // back / bezel (front face sits at z = -0.04 — well behind the screen)
+    const bezel = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 0.10, H + 0.10, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0x1a1428, roughness: 0.6, metalness: 0.2 })
+    );
+    bezel.position.z = -0.075;
+    this.tv.add(bezel);
+
+    // outer rim — warm primary line
+    const rim = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 0.12, H + 0.12, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0xff8a3d, roughness: 0.35, metalness: 0.55 })
+    );
+    rim.position.z = -0.095;
+    this.tv.add(rim);
+
+    // screen — shader material
+    this.screenUniforms = {
+      uTime:    { value: 0 },
+      uChannel: { value: 0 },
+      uPower:   { value: 0 }, // 0 = off, 1 = on
+      uTuning:  { value: 0 }, // 1 = static flash
+    };
+    const screenMat = new THREE.ShaderMaterial({
+      uniforms: this.screenUniforms,
+      vertexShader: SCREEN_VS,
+      fragmentShader: SCREEN_FS,
+    });
+    this.screen = new THREE.Mesh(new THREE.PlaneGeometry(W, H), screenMat);
+    this.screen.position.z = 0.001; // just in front of bezel front-face (which is at -0.04)
+    this.tv.add(this.screen);
+
+    // emissive halo behind TV (glow when on)
+    const halo = new THREE.Mesh(
+      new THREE.PlaneGeometry(W + 0.5, H + 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.0 })
+    );
+    halo.position.z = -0.12;
+    this.tv.add(halo);
+    this.halo = halo;
+
+    // power LED on bezel (bottom-right)
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.015, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xf87171 })
+    );
+    led.position.set(W / 2 - 0.06, -H / 2 - 0.03, -0.035);
+    this.tv.add(led);
+    this.led = led;
+
+    // Channel label (canvas texture on a plane)
+    this.channelLabel = this._makeLabelMesh('', 512, 96);
+    this.channelLabel.position.set(0, H / 2 - 0.08, 0.005);
+    this.channelLabel.scale.set(0.9, 0.13, 1);
+    this.channelLabel.material.opacity = 0;
+    this.tv.add(this.channelLabel);
+
+    // Volume bar — 10 segments along bottom-center
+    this.volumeGroup = new THREE.Group();
+    this.volumeGroup.position.set(0, -H / 2 + 0.08, 0.005);
+    this.tv.add(this.volumeGroup);
+    this.volumeBars = [];
+    const seg = 10;
+    const segW = 0.10, segH = 0.04, gap = 0.012;
+    const totalW = seg * segW + (seg - 1) * gap;
+    for (let i = 0; i < seg; i++) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(segW, segH, 0.012),
+        new THREE.MeshBasicMaterial({ color: 0x6fdcff, transparent: true, opacity: 0.0 })
+      );
+      m.position.x = -totalW / 2 + segW / 2 + i * (segW + gap);
+      this.volumeGroup.add(m);
+      this.volumeBars.push(m);
+    }
+    this.volumeLabel = this._makeLabelMesh('', 512, 96);
+    this.volumeLabel.position.set(0, segH + 0.06, 0);
+    this.volumeLabel.scale.set(0.5, 0.10, 1);
+    this.volumeLabel.material.opacity = 0;
+    this.volumeGroup.add(this.volumeLabel);
+
+    // floor pedestal (simple cylinder so the TV reads as standing)
+    const stand = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.12, 0.6, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2a2138, roughness: 0.7, metalness: 0.3 })
+    );
+    stand.position.set(0, -H / 2 - 0.32, 0);
+    this.tv.add(stand);
+
+    // state — TV boots ON so the user sees content immediately
+    this.power = true;        // boolean
+    this.powerAnim = 1;       // animates 0..1 toward power ? 1 : 0
+    this.channel = 0;
+    this.targetChannel = 0;
+    this.tuning = 0;
+    this.tuningTimer = 0;
+    this.volume = 6;          // 0..10
+    this.labelFade = 1.5;     // show initial channel name on boot
+    this.volumeFade = 0;
+
+    this._updateChannelLabel();
+    this._updateVolumeBars();
+
+    // ---------- Mudra wiring ----------
+    mudra.on('nav_direction', (data) => {
+      if (!data || !data.direction || data.direction === 'None') return;
+      switch (data.direction) {
+        case 'Up':    this._changeChannel(+1); break;
+        case 'Down':  this._changeChannel(-1); break;
+        case 'Left':  this._changeVolume(-1); break;
+        case 'Right': this._changeVolume(+1); break;
+      }
+    });
+    mudra.on('gesture', (data) => {
+      if (data && data.type === 'tap') this._togglePower();
+    });
+    mudra.subscribe('nav_direction');
+    mudra.subscribe('gesture');
+
+    // ---------- 2D chrome wiring ----------
+    const pill = document.getElementById('mudra-status');
+    const LABELS = { idle: 'Manual mode', connecting: 'Connecting…', connected: 'Connected', disconnected: 'Disconnected' };
+    const CLASSES = { idle: 'conn-manual', connecting: 'conn-connecting', connected: 'conn-connected', disconnected: 'conn-disconnected' };
+    mudra.on('_status', (s) => {
+      pill.classList.remove('conn-manual', 'conn-connecting', 'conn-connected', 'conn-disconnected');
+      pill.classList.add(CLASSES[s] ?? 'conn-manual');
+      pill.textContent = LABELS[s] ?? s;
+    });
+
+    const btnManual = document.getElementById('mode-manual');
+    const btnMudra  = document.getElementById('mode-mudra');
+    const simPanel  = document.getElementById('mudra-sim');
+    const applyMode = (mode) => {
+      btnManual.setAttribute('aria-checked', mode === 'manual' ? 'true' : 'false');
+      btnMudra .setAttribute('aria-checked', mode === 'mudra'  ? 'true' : 'false');
+      btnManual.classList.toggle('active', mode === 'manual');
+      btnMudra .classList.toggle('active', mode === 'mudra');
+      simPanel.classList.toggle('disabled', mode === 'mudra');
+      mudra.setMode(mode);
+    };
+    btnManual.addEventListener('click', () => applyMode('manual'));
+    btnMudra .addEventListener('click', () => applyMode('mudra'));
+    applyMode('manual');
+
+    // ---------- Simulator buttons ----------
+    const simNavDir = (direction) => {
+      mudra.emitSynthetic({ type: 'nav_direction', data: { direction, timestamp: Date.now() } });
+    };
+    const simTap = () => {
+      // Fire exactly once. When a live socket is open, forward to the band and let
+      // its response arrive; otherwise synthesize locally. MudraClient.send already
+      // auto-synthesizes in manual mode, so calling both would double-fire and
+      // cancel out an odd number of toggles.
+      if (mudra.mode === 'mudra' && mudra.state === 'connected') {
+        mudra.send({ command: 'trigger_gesture', data: { type: 'tap' } });
+      } else {
+        mudra.emitSynthetic({ type: 'gesture', data: { type: 'tap', confidence: 1.0, timestamp: Date.now() } });
+      }
+    };
+    document.getElementById('sim-up')   .addEventListener('click', () => simNavDir('Up'));
+    document.getElementById('sim-down') .addEventListener('click', () => simNavDir('Down'));
+    document.getElementById('sim-left') .addEventListener('click', () => simNavDir('Left'));
+    document.getElementById('sim-right').addEventListener('click', () => simNavDir('Right'));
+    document.getElementById('sim-tap')  .addEventListener('click', simTap);
+
+    // ---------- Keyboard (capture phase) ----------
+    window.addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.code) {
+        case 'ArrowUp':    e.stopPropagation(); simNavDir('Up');    break;
+        case 'ArrowDown':  e.stopPropagation(); simNavDir('Down');  break;
+        case 'ArrowLeft':  e.stopPropagation(); simNavDir('Left');  break;
+        case 'ArrowRight': e.stopPropagation(); simNavDir('Right'); break;
+        case 'Space':      e.stopPropagation(); simTap();           break;
+      }
+    }, { capture: true });
+
+    // ---------- Onboarding overlay (multi-step navigation) ----------
+    (() => {
+      const STEPS = 3;
+      let cur = 1;
+      const overlay = document.getElementById('onboarding-overlay');
+      const back    = document.getElementById('ob-back');
+      const next    = document.getElementById('ob-next');
+      const counter = document.getElementById('ob-counter');
+      const close   = document.getElementById('ob-close');
+
+      const show = (n) => {
+        for (let i = 1; i <= STEPS; i++) {
+          const el = document.getElementById(`ob-step-${i}`);
+          if (el) el.hidden = (i !== n);
+        }
+        back.hidden = (n === 1);
+        next.textContent = (n === STEPS) ? 'Get started' : 'Continue';
+        counter.textContent = `${n} of ${STEPS}`;
+      };
+      const dismiss = () => { if (overlay && overlay.parentNode) overlay.remove(); };
+
+      next.addEventListener('click', () => {
+        if (cur < STEPS) { cur++; show(cur); }
+        else dismiss();
+      });
+      back.addEventListener('click', () => { if (cur > 1) { cur--; show(cur); } });
+      close.addEventListener('click', dismiss);
+      window.addEventListener('keydown', (e) => {
+        if (!overlay.parentNode) return;
+        if (e.key === 'Escape')     { e.preventDefault(); dismiss(); }
+        if (e.key === 'PageDown')   { e.preventDefault(); if (cur < STEPS) { cur++; show(cur); } else dismiss(); }
+        if (e.key === 'PageUp')     { e.preventDefault(); if (cur > 1)     { cur--; show(cur); } }
+      }, { capture: true });
+
+      show(1);
+    })();
+  }
+
+  /* xb.Script update hook — driven by XR Blocks render loop. */
+  update() {
+    const t = performance.now() * 0.001;
+    this.screenUniforms.uTime.value = t;
+
+    // power animation (snappier — CRT-style flick)
+    const target = this.power ? 1 : 0;
+    this.powerAnim += (target - this.powerAnim) * 0.22;
+    if (Math.abs(target - this.powerAnim) < 0.001) this.powerAnim = target;
+    this.screenUniforms.uPower.value = this.powerAnim;
+
+    // halo glow follows power
+    this.halo.material.opacity = this.powerAnim * 0.18;
+    // LED color
+    this.led.material.color.setHex(this.power ? 0x4ade80 : 0xf87171);
+
+    // tuning flash
+    if (this.tuningTimer > 0) {
+      this.tuningTimer -= 1 / 60;
+      const k = Math.max(0, this.tuningTimer / 0.25);
+      this.screenUniforms.uTuning.value = k * 0.6;
+      if (this.tuningTimer <= 0) {
+        this.screenUniforms.uTuning.value = 0;
+        this.channel = this.targetChannel;
+        this.screenUniforms.uChannel.value = this.channel;
+        this._updateChannelLabel();
+        this.labelFade = 1;
+      }
+    }
+
+    // label / volume fade-out
+    if (this.labelFade > 0) {
+      this.labelFade = Math.max(0, this.labelFade - 0.008);
+      this.channelLabel.material.opacity = Math.min(1, this.labelFade * 2);
+    }
+    if (this.volumeFade > 0) {
+      this.volumeFade = Math.max(0, this.volumeFade - 0.012);
+      const op = Math.min(1, this.volumeFade * 2);
+      for (const b of this.volumeBars) {
+        b.material.opacity = op * (b.userData.lit ? 1.0 : 0.18);
+      }
+      this.volumeLabel.material.opacity = op;
+    }
+
+    // gentle idle rotation for life
+    this.tv.rotation.y = Math.sin(t * 0.15) * 0.02;
+  }
+
+  _togglePower() {
+    this.power = !this.power;
+    // surface a brief label cue
+    this._setLabelText(this.power ? 'POWER ON' : 'POWER OFF', this.power ? '#4ade80' : '#f87171');
+    this.labelFade = 1.0;
+  }
+
+  _changeChannel(delta) {
+    if (!this.power) return; // can't change channel when off
+    const n = CHANNELS.length;
+    this.targetChannel = (((this.channel + delta) % n) + n) % n;
+    if (this.targetChannel === this.channel) return;
+    // static flash, then commit channel on timer end
+    this.tuningTimer = 0.25;
+  }
+
+  _changeVolume(delta) {
+    if (!this.power) return;
+    this.volume = Math.max(0, Math.min(10, this.volume + delta));
+    this._updateVolumeBars();
+    this.volumeFade = 1.0;
+  }
+
+  _updateChannelLabel() {
+    const ch = CHANNELS[this.channel];
+    this._setLabelText(`CH ${String(ch.id + 1).padStart(2, '0')} · ${ch.name}`, '#ff8a3d');
+  }
+
+  _setLabelText(text, color = '#ff8a3d') {
+    const c = this.channelLabel.userData.canvas;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    // pill background
+    ctx.fillStyle = 'rgba(13, 14, 28, 0.72)';
+    this._roundRect(ctx, 12, 16, c.width - 24, c.height - 32, 28);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // text
+    ctx.fillStyle = color;
+    ctx.font = '700 44px Poppins, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, c.width / 2, c.height / 2);
+    this.channelLabel.material.map.needsUpdate = true;
+    this.channelLabel.material.needsUpdate = true;
+  }
+
+  _updateVolumeBars() {
+    for (let i = 0; i < this.volumeBars.length; i++) {
+      const lit = i < this.volume;
+      this.volumeBars[i].userData.lit = lit;
+      this.volumeBars[i].material.color.setHex(lit ? 0x6fdcff : 0x2a3543);
+    }
+    // also redraw volume label
+    const c = this.volumeLabel.userData.canvas;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#6fdcff';
+    ctx.font = '700 38px Poppins, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`VOL ${this.volume * 10}%`, c.width / 2, c.height / 2);
+    this.volumeLabel.material.map.needsUpdate = true;
+  }
+
+  _makeLabelMesh(text, w, h) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 1, depthWrite: false });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    mesh.userData.canvas = canvas;
+    if (text) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ff8a3d';
+      ctx.font = '700 44px Poppins, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, w / 2, h / 2);
+      tex.needsUpdate = true;
+    }
+    return mesh;
+  }
+
+  _roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const options = new xb.Options();
+  xb.add(new XRTv());
+  xb.init(options);
+});
+    </script>
+  </body>
+</html>

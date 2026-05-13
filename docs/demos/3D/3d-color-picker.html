@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>3D Color Picker | Mudra XR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link type="text/css" rel="stylesheet" href="https://xrblocks.github.io/css/xr.css" />
+    <script>window.litDisableBundleWarning = true;</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+          "troika-three-text": "https://cdn.jsdelivr.net/gh/protectwise/troika@028b81cf308f0f22e5aa8e78196be56ec1997af5/packages/troika-three-text/src/index.js",
+          "troika-three-utils": "https://cdn.jsdelivr.net/gh/protectwise/troika@v0.52.4/packages/troika-three-utils/src/index.js",
+          "troika-worker-utils": "https://cdn.jsdelivr.net/gh/protectwise/troika@v0.52.4/packages/troika-worker-utils/src/index.js",
+          "bidi-js": "https://esm.sh/bidi-js@%5E1.0.2?target=es2022",
+          "webgl-sdf-generator": "https://esm.sh/webgl-sdf-generator@1.1.1/es2022/webgl-sdf-generator.mjs",
+          "lit": "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js",
+          "lit/": "https://esm.run/lit@3/",
+          "xrblocks": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/xrblocks.js",
+          "xrblocks/addons/": "https://cdn.jsdelivr.net/npm/xrblocks@0.10.0/build/addons/"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --bg: #000000;
+        --card: #181e21;
+        --primary: #77EAE9;
+        --accent: #2dd4bf;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --success: #22c55e;
+        --warning: #eab308;
+        --error: #ef4444;
+      }
+      body {
+        margin: 0;
+        font-family: 'Poppins', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      #mode-toggle {
+        position: fixed; top: 8px; left: 12px;
+        display: flex; gap: 4px;
+        background: var(--card); border: 1px solid var(--primary); border-radius: 999px;
+        padding: 4px;
+        z-index: 9999;
+        font-family: inherit;
+      }
+      #mode-toggle button {
+        background: transparent; color: var(--text);
+        border: none; border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit;
+      }
+      #mode-toggle button[aria-selected="true"] {
+        background: var(--primary);
+        color: var(--bg);
+      }
+
+      #mudra-status {
+        position: fixed; top: 8px; right: 12px;
+        padding: 4px 10px; border-radius: 999px;
+        font-size: 0.8rem; font-family: inherit;
+        background: var(--card); color: var(--text);
+        border: 1px solid var(--text-secondary);
+        z-index: 9999;
+      }
+      #mudra-status.idle        { color: var(--text-secondary); }
+      #mudra-status.connecting  { color: var(--warning); }
+      #mudra-status.connected   { color: var(--success); }
+      #mudra-status.disconnected{ color: var(--error); }
+
+      #mudra-sim {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+        padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px;
+        z-index: 9999;
+        font-family: inherit; font-size: 0.9rem;
+        color: var(--text);
+        align-items: center;
+      }
+      #mudra-sim fieldset {
+        border: 1px solid var(--text-secondary); border-radius: 6px;
+        padding: 4px 8px; display: flex; gap: 6px; align-items: center;
+      }
+      #mudra-sim legend { font-size: 0.75rem; opacity: 0.7; padding: 0 4px; }
+      #mudra-sim button {
+        background: var(--card); color: var(--text);
+        border: 1px solid var(--primary); border-radius: 4px;
+        padding: 4px 10px; cursor: pointer; font-family: inherit;
+      }
+      #mudra-sim button:hover { background: var(--primary); color: var(--bg); }
+      #mudra-sim button.held { background: var(--primary); color: var(--bg); }
+      #mudra-sim.disabled { opacity: 0.35; pointer-events: none; }
+
+      /* === Onboarding overlay (multi-step) === */
+      #onboarding-overlay {
+        position: fixed; inset: 0;
+        display: flex; justify-content: center; align-items: center;
+        z-index: 9999;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(6px);
+        font-family: 'Poppins', system-ui, sans-serif;
+      }
+      .onboarding-panel {
+        position: relative;
+        background: var(--card);
+        backdrop-filter: blur(14px);
+        border-radius: 28px;
+        padding: 36px 40px 28px;
+        width: min(560px, 92vw);
+        max-height: 88vh;
+        overflow-y: auto;
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--primary);
+        color: var(--text);
+      }
+      .ob-title {
+        font-size: 26px; font-weight: 800;
+        color: var(--text);
+        margin: 0 0 22px 0;
+        letter-spacing: 0.3px;
+      }
+      .ob-close {
+        position: absolute;
+        top: 18px; right: 18px;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.7);
+        color: var(--text);
+        border: 1px solid var(--text-secondary);
+        font-size: 18px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s ease;
+      }
+      .ob-close:hover { background: rgba(0,0,0,0.9); }
+      .ob-body h2 {
+        font-size: 20px; font-weight: 700;
+        color: var(--text);
+        margin: 0 0 10px 0;
+      }
+      .ob-body p {
+        font-size: 14.5px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+        margin: 0 0 14px 0;
+      }
+      .ob-body ul {
+        margin: 8px 0 0 0;
+        padding-left: 22px;
+        color: var(--text-secondary);
+        font-size: 14.5px;
+        line-height: 1.7;
+      }
+      .ob-body li { margin-bottom: 6px; }
+      .ob-body li strong { color: var(--text); font-weight: 700; }
+      .ob-body .kbd {
+        display: inline-block;
+        background: rgba(0,0,0,0.5);
+        border: 1px solid var(--text-secondary);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        padding: 1px 7px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: var(--text);
+        margin: 0 2px;
+      }
+      .ob-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 24px; gap: 12px;
+      }
+      .ob-counter {
+        font-size: 12px;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+      }
+      .ob-actions { display: flex; gap: 8px; }
+      .ob-back {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--text-secondary);
+        padding: 9px 18px;
+        border-radius: 999px;
+        font-weight: 600; font-size: 14px;
+        cursor: pointer; font-family: inherit;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      .ob-back:hover { color: var(--text); border-color: var(--text); }
+      .ob-next {
+        background: var(--primary);
+        color: var(--bg);
+        border: none;
+        padding: 10px 22px;
+        border-radius: 999px;
+        font-weight: 700; font-size: 14px;
+        cursor: pointer; font-family: inherit;
+        box-shadow: 0 4px 14px rgba(119, 234, 233, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .ob-next:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(119, 234, 233, 0.5); }
+      .ob-next:active { transform: translateY(1px); }
+
+      .mudra-badge {
+        position: fixed;
+        bottom: 56px;
+        right: 12px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        opacity: 0.7;
+        font-family: inherit;
+        letter-spacing: 0.02em;
+        z-index: 9999;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Onboarding overlay (multi-step, bespoke per app — re-shown every load) -->
+    <div id="onboarding-overlay">
+      <div class="onboarding-panel">
+        <button class="ob-close" id="ob-close" aria-label="Close">×</button>
+        <h1 class="ob-title">Welcome to Mudra Band</h1>
+
+        <div class="ob-body" id="ob-step-1">
+          <h2>🎨 3D Color Picker</h2>
+          <p>Move a cursor over a floating color palette, then hold a button to apply the highlighted hue to the pedestal sphere in front of you.</p>
+          <p>The app starts in <strong>Manual mode</strong> so you can practice with on-screen buttons and the keyboard. When your Mudra Band is paired, click <strong>Mudra</strong> in the top bar to drive the cursor from your wrist instead.</p>
+        </div>
+
+        <div class="ob-body" id="ob-step-2" hidden>
+          <h2>Controls</h2>
+          <p>Two signals drive this app. Each is wired to your wrist, your keyboard, and the simulator pill bar at the bottom of the screen.</p>
+          <ul>
+            <li><strong>Move the cursor:</strong> continuous wrist motion (navigation) — keyboard: <span class="kbd">I</span> / <span class="kbd">J</span> / <span class="kbd">K</span> / <span class="kbd">L</span> (up / left / down / right) — sim panel: the four arrow buttons.</li>
+            <li><strong>Pick a color:</strong> press and hold the button on your band — keyboard: hold <span class="kbd">Shift</span> — sim panel: press and hold <strong>Select</strong>. Release to apply.</li>
+          </ul>
+        </div>
+
+        <div class="ob-body" id="ob-step-3" hidden>
+          <h2>Practice without a band</h2>
+          <p>You don't need a paired Mudra Band to try this app. While you're in Manual mode every control above is available from your keyboard and the simulator pill bar at the bottom of the screen.</p>
+          <ul>
+            <li><strong>Simulator panel:</strong> the four arrow buttons fire navigation deltas (one click ≈ a gentle wrist nudge); the <strong>Select</strong> button must be pressed and held to mimic a sustained button hold.</li>
+            <li><strong>Keyboard:</strong> <span class="kbd">I</span> / <span class="kbd">J</span> / <span class="kbd">K</span> / <span class="kbd">L</span> move the cursor, hold <span class="kbd">Shift</span> to pick. While this dialog is open, <span class="kbd">Page Up</span> / <span class="kbd">Page Down</span> step through it and <span class="kbd">Esc</span> closes it at any time.</li>
+            <li><strong>Switch to Mudra mode:</strong> when your band is paired, click <strong>Mudra</strong> in the top bar. The simulator greys out and your wrist takes over.</li>
+          </ul>
+        </div>
+
+        <div class="ob-footer">
+          <span class="ob-counter" id="ob-counter">1 of 3</span>
+          <div class="ob-actions">
+            <button class="ob-back" id="ob-back" hidden>Back</button>
+            <button class="ob-next" id="ob-next">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mode-toggle" role="tablist" aria-label="Mode">
+      <button id="mode-manual" role="tab" aria-selected="true">Manual</button>
+      <button id="mode-mudra"  role="tab" aria-selected="false">Mudra</button>
+    </div>
+
+    <div id="mudra-status">Manual</div>
+
+    <div id="mudra-sim" aria-label="Mudra signal simulator">
+      <fieldset>
+        <legend>navigation</legend>
+        <button id="sim-nav-up"    title="I">↑</button>
+        <button id="sim-nav-down"  title="K">↓</button>
+        <button id="sim-nav-left"  title="J">←</button>
+        <button id="sim-nav-right" title="L">→</button>
+      </fieldset>
+      <fieldset>
+        <legend>button</legend>
+        <button id="sim-btn-press" title="Shift (hold)">Select</button>
+      </fieldset>
+    </div>
+
+    <div class="mudra-badge">Created by Mudra</div>
+
+    <script type="module">
+import * as THREE from 'three';
+import * as xb from 'xrblocks';
+
+// ===== MudraClient (verbatim from xr_build_rules.md §4) =====
+class MudraClient {
+  constructor(url) {
+    this._url = url;
+    this._handlers = {};
+    this._subscriptions = new Set();
+    this._mode = 'manual';
+    this._state = 'idle';
+    this._ws = null;
+    this._statusPoll = null;
+    this._reconnectTimer = null;
+    this._reconnectIdx = 0;
+    this._connToken = 0;
+  }
+  on(signal, fn) { this._handlers[signal] = fn; }
+  subscribe(signal) {
+    this._subscriptions.add(signal);
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify({ command: 'subscribe', signal }));
+    }
+  }
+  send(cmd) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify(cmd));
+    } else if (this._mode === 'manual' && cmd.command === 'trigger_gesture') {
+      this._emit({ type: 'gesture', data: { type: cmd.data.type, confidence: 1.0, timestamp: Date.now() } });
+    }
+  }
+  setMode(mode) {
+    if (mode !== 'manual' && mode !== 'mudra') return;
+    if (mode === this._mode) return;
+    this._mode = mode;
+    this._connToken++;
+    this._stopStatusPoll();
+    this._clearReconnect();
+    if (this._ws) {
+      try { this._ws.close(); } catch (_) {}
+      this._ws = null;
+    }
+    if (mode === 'manual') {
+      this._setState('idle');
+    } else {
+      this._openSocket();
+    }
+  }
+  emitSynthetic(payload) { this._emit(payload); }
+  get state() { return this._state; }
+  get mode() { return this._mode; }
+
+  _openSocket() {
+    const token = this._connToken;
+    this._setState('connecting');
+    try {
+      const ws = new WebSocket(this._url);
+      this._ws = ws;
+      ws.onopen = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') { try { ws.close(); } catch (_) {} return; }
+        for (const sig of this._subscriptions) {
+          ws.send(JSON.stringify({ command: 'subscribe', signal: sig }));
+        }
+        ws.send(JSON.stringify({ command: 'get_status' }));
+        this._startStatusPoll();
+      };
+      ws.onmessage = (e) => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        let msg; try { msg = JSON.parse(e.data); } catch (_) { return; }
+        if (msg.type === 'status') {
+          const ok = msg.data?.device?.state === 'connected';
+          this._setState(ok ? 'connected' : 'disconnected');
+          return;
+        }
+        if (msg.type === 'connection_status') {
+          if (msg.data?.status === 'disconnected') this._setState('disconnected');
+          else if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+            this._ws.send(JSON.stringify({ command: 'get_status' }));
+          }
+          return;
+        }
+        this._emit(msg);
+      };
+      ws.onerror = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        this._setState('disconnected');
+        this._stopStatusPoll();
+        this._scheduleReconnect();
+      };
+      ws.onclose = () => {
+        if (token !== this._connToken || this._mode !== 'mudra') return;
+        this._setState('disconnected');
+        this._stopStatusPoll();
+        this._scheduleReconnect();
+      };
+    } catch (_) {
+      this._setState('disconnected');
+      this._scheduleReconnect();
+    }
+  }
+  _startStatusPoll() {
+    this._stopStatusPoll();
+    this._statusPoll = setInterval(() => {
+      if (this._mode !== 'mudra') { this._stopStatusPoll(); return; }
+      if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+        this._ws.send(JSON.stringify({ command: 'get_status' }));
+      }
+    }, 2000);
+  }
+  _stopStatusPoll() { if (this._statusPoll) { clearInterval(this._statusPoll); this._statusPoll = null; } }
+  _scheduleReconnect() {
+    this._clearReconnect();
+    const delays = [1000, 2000, 5000, 5000, 5000];
+    const delay = delays[Math.min(this._reconnectIdx, delays.length - 1)];
+    this._reconnectIdx++;
+    const token = this._connToken;
+    this._reconnectTimer = setTimeout(() => {
+      if (token !== this._connToken || this._mode !== 'mudra') return;
+      this._openSocket();
+    }, delay);
+  }
+  _clearReconnect() { if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; } }
+  _setState(s) {
+    if (s === 'connected') this._reconnectIdx = 0;
+    if (s === this._state) return;
+    this._state = s;
+    if (this._handlers['_status']) this._handlers['_status'](s);
+  }
+  _emit(msg) {
+    const h = this._handlers[msg.type];
+    if (h) h(msg.data);
+  }
+}
+
+const mudra = new MudraClient('ws://127.0.0.1:8766');
+
+// Generate a palette grid (cols x rows) using HSL.
+const GRID_COLS = 8;
+const GRID_ROWS = 5;
+const SWATCH_GAP = 0.18;
+const SWATCH_SIZE = 0.13;
+const GRID_Z = -1.4;
+
+class ColorPicker extends xb.Script {
+  constructor() {
+    super();
+    this.cursorPos = new THREE.Vector2(0, 0); // local coords in grid plane (meters)
+    this.cursorBounds = {
+      x: ((GRID_COLS - 1) * SWATCH_GAP) / 2 + SWATCH_SIZE,
+      y: ((GRID_ROWS - 1) * SWATCH_GAP) / 2 + SWATCH_SIZE,
+    };
+    this.swatches = []; // { mesh, color, baseScale, gx, gy }
+    this.hoveredIdx = -1;
+    this.selectedColor = new THREE.Color(0xffffff);
+    this.buttonHeld = false;
+  }
+
+  init() {
+    // A pedestal to make the scene feel grounded.
+    const pedestalGeom = new THREE.CylinderGeometry(0.45, 0.55, 0.05, 48);
+    const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.6, metalness: 0.1 });
+    const pedestal = new THREE.Mesh(pedestalGeom, pedestalMat);
+    pedestal.position.set(0, xb.user.height - 0.85, GRID_Z + 0.1);
+    this.add(pedestal);
+
+    // Preview object sitting on the pedestal — shows the currently selected color.
+    const previewGeom = new THREE.IcosahedronGeometry(0.18, 1);
+    this.previewMat = new THREE.MeshStandardMaterial({
+      color: this.selectedColor,
+      roughness: 0.25,
+      metalness: 0.2,
+      emissive: this.selectedColor.clone(),
+      emissiveIntensity: 0.15,
+    });
+    this.previewMesh = new THREE.Mesh(previewGeom, this.previewMat);
+    this.previewMesh.position.set(0, xb.user.height - 0.65, GRID_Z + 0.1);
+    this.add(this.previewMesh);
+
+    // The swatch grid lives in its own group, positioned at eye level.
+    this.gridGroup = new THREE.Group();
+    this.gridGroup.position.set(0, xb.user.height - 0.1, GRID_Z);
+    this.add(this.gridGroup);
+
+    // Build swatches.
+    const halfW = ((GRID_COLS - 1) * SWATCH_GAP) / 2;
+    const halfH = ((GRID_ROWS - 1) * SWATCH_GAP) / 2;
+    for (let gy = 0; gy < GRID_ROWS; gy++) {
+      for (let gx = 0; gx < GRID_COLS; gx++) {
+        const hue = gx / GRID_COLS;
+        const lightness = 0.25 + 0.55 * (1 - gy / Math.max(1, GRID_ROWS - 1));
+        const color = new THREE.Color().setHSL(hue, 0.78, lightness);
+
+        const geom = new THREE.BoxGeometry(SWATCH_SIZE, SWATCH_SIZE, SWATCH_SIZE);
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.35,
+          metalness: 0.05,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(gx * SWATCH_GAP - halfW, halfH - gy * SWATCH_GAP, 0);
+        const baseScale = 1.0;
+        mesh.userData = { gx, gy, baseScale, color: color.clone() };
+        this.gridGroup.add(mesh);
+        this.swatches.push({ mesh, color: color.clone(), baseScale, gx, gy });
+      }
+    }
+
+    // Cursor: glowing ring + small dot, parented to the grid plane.
+    const ringGeom = new THREE.TorusGeometry(SWATCH_SIZE * 0.95, 0.012, 12, 36);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    this.cursorRing = new THREE.Mesh(ringGeom, ringMat);
+    this.cursorRing.position.z = 0.05;
+    this.gridGroup.add(this.cursorRing);
+
+    const dotGeom = new THREE.SphereGeometry(0.012, 16, 12);
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    this.cursorDot = new THREE.Mesh(dotGeom, dotMat);
+    this.cursorDot.position.z = 0.05;
+    this.gridGroup.add(this.cursorDot);
+
+    // Lighting.
+    this.add(new THREE.HemisphereLight(0xffffff, 0xc8cad0, 0.6));
+    const key = new THREE.DirectionalLight(0xffffff, 0.7);
+    key.position.set(2, 4, 3);
+    this.add(key);
+
+    // ===== Mudra wiring =====
+    mudra.on('navigation', (data) => this.handleNavigation(data));
+    mudra.on('button', (data) => this.handleButton(data));
+    mudra.on('_status', (s) => this.handleStatus(s));
+
+    mudra.subscribe('navigation');
+    mudra.subscribe('button');
+
+    this.updateCursor();
+    this.updateHover();
+  }
+
+  // === Signal handlers ===
+
+  handleNavigation(data) {
+    const sens = 0.002;
+    this.cursorPos.x += (data.delta_x ?? 0) * sens;
+    this.cursorPos.y += (data.delta_y ?? 0) * sens;
+    this.cursorPos.x = Math.max(-this.cursorBounds.x, Math.min(this.cursorBounds.x, this.cursorPos.x));
+    this.cursorPos.y = Math.max(-this.cursorBounds.y, Math.min(this.cursorBounds.y, this.cursorPos.y));
+    this.updateCursor();
+    this.updateHover();
+  }
+
+  handleButton(data) {
+    const pressed = data?.pressed ?? (data?.state === 'pressed') ?? false;
+    this.buttonHeld = pressed;
+    if (pressed) this.selectHovered();
+    this.refreshCursorTint();
+  }
+
+  handleStatus(_s) { /* status pill updates via DOM wiring below */ }
+
+  // === Scene updates ===
+
+  updateCursor() {
+    this.cursorRing.position.x = this.cursorPos.x;
+    this.cursorRing.position.y = this.cursorPos.y;
+    this.cursorDot.position.x = this.cursorPos.x;
+    this.cursorDot.position.y = this.cursorPos.y;
+  }
+
+  updateHover() {
+    let best = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < this.swatches.length; i++) {
+      const s = this.swatches[i];
+      const dx = s.mesh.position.x - this.cursorPos.x;
+      const dy = s.mesh.position.y - this.cursorPos.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    const threshold = (SWATCH_GAP * 0.55) * (SWATCH_GAP * 0.55);
+    if (bestDist > threshold) best = -1;
+
+    if (best === this.hoveredIdx) return;
+    if (this.hoveredIdx >= 0) {
+      const prev = this.swatches[this.hoveredIdx];
+      prev.mesh.scale.setScalar(prev.baseScale);
+      prev.mesh.material.emissive.setHex(0x000000);
+    }
+    this.hoveredIdx = best;
+    if (best >= 0) {
+      const s = this.swatches[best];
+      s.mesh.scale.setScalar(s.baseScale * 1.35);
+      s.mesh.material.emissive.copy(s.color).multiplyScalar(0.35);
+      this.cursorRing.material.color.copy(s.color);
+    } else {
+      this.cursorRing.material.color.setHex(0xffffff);
+    }
+  }
+
+  selectHovered() {
+    if (this.hoveredIdx < 0) return;
+    const s = this.swatches[this.hoveredIdx];
+    this.selectedColor.copy(s.color);
+    this.previewMat.color.copy(s.color);
+    this.previewMat.emissive.copy(s.color).multiplyScalar(0.25);
+
+    // Tiny pulse animation on the preview.
+    this._pulseT = 0;
+  }
+
+  refreshCursorTint() {
+    const baseRingScale = this.buttonHeld ? 1.25 : 1.0;
+    this.cursorRing.scale.setScalar(baseRingScale);
+  }
+
+  update() {
+    // Subtle idle rotation of the preview to show off the color from all sides.
+    if (this.previewMesh) {
+      this.previewMesh.rotation.y += 0.005;
+      this.previewMesh.rotation.x += 0.002;
+    }
+    if (this._pulseT !== undefined) {
+      this._pulseT += 0.06;
+      const pulse = 1 + 0.12 * Math.sin(this._pulseT) * Math.max(0, 1 - this._pulseT / 3);
+      if (this.previewMesh) this.previewMesh.scale.setScalar(pulse);
+      if (this._pulseT > 4) this._pulseT = undefined;
+    }
+  }
+}
+
+// ===== Bootstrap =====
+document.addEventListener('DOMContentLoaded', () => {
+  const options = new xb.Options();
+  // No custom background helper applied — XR Blocks renders its default room.
+  xb.add(new ColorPicker());
+  xb.init(options);
+
+  // ----- Status pill -----
+  const pill = document.getElementById('mudra-status');
+  const LABELS = {
+    idle: 'Manual',
+    connecting: 'Connecting…',
+    connected: 'Connected',
+    disconnected: 'Disconnected',
+  };
+  mudra.on('_status', (s) => {
+    pill.className = '';
+    pill.classList.add(s);
+    pill.textContent = LABELS[s] ?? s;
+  });
+
+  // ----- Mode toggle -----
+  const btnManual = document.getElementById('mode-manual');
+  const btnMudra  = document.getElementById('mode-mudra');
+  const simPanel  = document.getElementById('mudra-sim');
+  function applyMode(mode) {
+    btnManual.setAttribute('aria-selected', mode === 'manual' ? 'true' : 'false');
+    btnMudra .setAttribute('aria-selected', mode === 'mudra'  ? 'true' : 'false');
+    simPanel.classList.toggle('disabled', mode === 'mudra');
+    mudra.setMode(mode);
+  }
+  btnManual.addEventListener('click', () => applyMode('manual'));
+  btnMudra .addEventListener('click', () => applyMode('mudra'));
+  applyMode('manual');
+
+  // ----- Sim panel: navigation buttons -----
+  function simNav(dx, dy) {
+    mudra.emitSynthetic({ type: 'navigation', data: { delta_x: dx, delta_y: dy, timestamp: Date.now() } });
+  }
+  document.getElementById('sim-nav-up')   .addEventListener('click', () => simNav(0,  3));
+  document.getElementById('sim-nav-down') .addEventListener('click', () => simNav(0, -3));
+  document.getElementById('sim-nav-left') .addEventListener('click', () => simNav(-3, 0));
+  document.getElementById('sim-nav-right').addEventListener('click', () => simNav( 3, 0));
+
+  // ----- Sim panel: button (mousedown=press, mouseup=release, leave=release) -----
+  const btnSelect = document.getElementById('sim-btn-press');
+  function emitButton(pressed) {
+    mudra.emitSynthetic({
+      type: 'button',
+      data: { pressed, state: pressed ? 'pressed' : 'released', timestamp: Date.now() },
+    });
+    btnSelect.classList.toggle('held', pressed);
+  }
+  btnSelect.addEventListener('mousedown', (e) => { e.preventDefault(); emitButton(true); });
+  btnSelect.addEventListener('mouseup',   (e) => { e.preventDefault(); emitButton(false); });
+  btnSelect.addEventListener('mouseleave',(e) => { if (e.buttons === 0) return; emitButton(false); });
+
+  // ----- Keyboard handlers -----
+  let shiftDown = false;
+  window.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    switch (e.code) {
+      case 'KeyI': e.stopPropagation(); simNav(0,  3); break;
+      case 'KeyK': e.stopPropagation(); simNav(0, -3); break;
+      case 'KeyJ': e.stopPropagation(); simNav(-3, 0); break;
+      case 'KeyL': e.stopPropagation(); simNav( 3, 0); break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        if (!shiftDown) { shiftDown = true; e.stopPropagation(); emitButton(true); }
+        break;
+    }
+  }, { capture: true });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      if (shiftDown) { shiftDown = false; e.stopPropagation(); emitButton(false); }
+    }
+  }, { capture: true });
+
+  // ---------- Onboarding overlay (multi-step navigation) ----------
+  (() => {
+    const STEPS = 3;
+    let cur = 1;
+    const overlay = document.getElementById('onboarding-overlay');
+    if (!overlay) return;
+    const back    = document.getElementById('ob-back');
+    const next    = document.getElementById('ob-next');
+    const counter = document.getElementById('ob-counter');
+    const close   = document.getElementById('ob-close');
+
+    const show = (n) => {
+      for (let i = 1; i <= STEPS; i++) {
+        const el = document.getElementById(`ob-step-${i}`);
+        if (el) el.hidden = (i !== n);
+      }
+      back.hidden = (n === 1);
+      next.textContent = (n === STEPS) ? 'Get started' : 'Continue';
+      counter.textContent = `${n} of ${STEPS}`;
+    };
+    const dismiss = () => { if (overlay && overlay.parentNode) overlay.remove(); };
+
+    next.addEventListener('click', () => {
+      if (cur < STEPS) { cur++; show(cur); }
+      else dismiss();
+    });
+    back.addEventListener('click', () => { if (cur > 1) { cur--; show(cur); } });
+    close.addEventListener('click', dismiss);
+    window.addEventListener('keydown', (e) => {
+      if (!overlay.parentNode) return;
+      if (e.key === 'Escape')   { e.preventDefault(); dismiss(); }
+      if (e.key === 'PageDown') { e.preventDefault(); if (cur < STEPS) { cur++; show(cur); } else dismiss(); }
+      if (e.key === 'PageUp')   { e.preventDefault(); if (cur > 1)     { cur--; show(cur); } }
+    }, { capture: true });
+
+    show(1);
+  })();
+});
+    </script>
+  </body>
+</html>

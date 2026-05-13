@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movable Box · Mudra</title>
+  <style>
+    :root {
+      --bg: #0e1726;
+      --card: #1a2438;
+      --primary: #77EAE9;
+      --accent: #34d399;
+      --text: #f8fafc;
+      --text-secondary: #94a3b8;
+      --success: #22c55e;
+      --warning: #eab308;
+      --error: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 70% -10%, #1d3a5f 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: Poppins, system-ui, sans-serif;
+      padding: 18px 18px 80px;
+    }
+    .app { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(119, 234, 233, 0.12);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    h1 { margin: 0; font-size: 1.2rem; }
+    p.muted { margin: 4px 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .topbar-left { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .mode-toggle {
+      display: inline-flex; gap: 4px;
+      background: rgba(0,0,0,0.35); padding: 4px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .mode-opt {
+      background: transparent; color: var(--text-secondary);
+      border: none; padding: 6px 16px; border-radius: 999px;
+      cursor: pointer; font: inherit; font-size: 0.9rem;
+    }
+    .mode-opt.active { background: var(--primary); color: #062123; font-weight: 700; }
+    .conn-pill {
+      display: inline-block; padding: 5px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .conn-manual       { background: transparent; color: var(--text-secondary); border: 1px solid var(--text-secondary); }
+    .conn-connecting   { background: var(--warning); color: #000; }
+    .conn-connected    { background: var(--success); color: #000; }
+    .conn-disconnected { background: var(--error);   color: #fff; }
+
+    .stage-card { padding: 0; overflow: hidden; }
+    .stage {
+      position: relative;
+      height: min(60vh, 520px);
+      background:
+        radial-gradient(circle at 30% 20%, rgba(119,234,233,0.10), transparent 50%),
+        linear-gradient(180deg, #0b1322, #050a14);
+      overflow: hidden;
+    }
+    .stage-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(148,163,184,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+    .box {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 84px; height: 84px;
+      transform: translate(-50%, -50%);
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset,
+                  0 12px 30px rgba(119,234,233,0.25);
+      transition: transform 180ms cubic-bezier(.2,.7,.2,1.2),
+                  box-shadow 180ms ease;
+    }
+    .box.bump { box-shadow: 0 0 0 1px rgba(255,255,255,0.35) inset,
+                            0 16px 40px rgba(119,234,233,0.45); }
+    .stage-caption {
+      position: absolute; left: 12px; bottom: 12px;
+      font-size: 0.8rem; color: var(--text-secondary);
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(148,163,184,0.18);
+      border-radius: 8px; padding: 5px 9px;
+    }
+    .pos-readout {
+      position: absolute; right: 12px; bottom: 12px;
+      font-size: 0.8rem; color: var(--primary);
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(119,234,233,0.25);
+      border-radius: 8px; padding: 5px 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sim-panel {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .sim-label {
+      font-size: 0.78rem; color: var(--text-secondary);
+      margin-right: 6px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .sim-panel button {
+      background: rgba(119,234,233,0.08);
+      color: var(--text);
+      border: 1px solid rgba(119,234,233,0.25);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font: inherit; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+    .sim-panel button:hover { background: rgba(119,234,233,0.18); }
+    .sim-panel button:active { transform: scale(0.96); }
+    .sim-panel.disabled { pointer-events: none; opacity: 0.4; }
+    .sim-panel.disabled button { cursor: not-allowed; }
+
+    .help { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; }
+    kbd {
+      display: inline-block; padding: 1px 6px; border-radius: 5px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      font-size: 0.78rem; font-family: ui-monospace, monospace;
+    }
+
+    .mudra-badge {
+      position: fixed; bottom: 12px; right: 14px;
+      font-size: 11px; color: var(--text-secondary);
+      opacity: 0.7; letter-spacing: 0.04em; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div>
+            <h1>Movable Box</h1>
+            <p class="muted">Swipe up / down / left / right with the Mudra Band to move the box.</p>
+          </div>
+        </div>
+        <div class="topbar-left">
+          <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+            <button id="modeManual" role="radio" aria-checked="true"  class="mode-opt active">Manual</button>
+            <button id="modeMudra"  role="radio" aria-checked="false" class="mode-opt">Mudra</button>
+          </div>
+          <div id="connPill" class="conn-pill conn-manual" role="status" aria-live="polite">Manual mode</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card stage-card">
+      <div class="stage" id="stage">
+        <div class="stage-grid"></div>
+        <div class="box" id="box"></div>
+        <div class="stage-caption">nav_direction → discrete steps</div>
+        <div class="pos-readout" id="posReadout">x: 0 · y: 0</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sim-panel" id="simPanel">
+        <span class="sim-label">nav_direction</span>
+        <button data-dir="Up">↑ Up</button>
+        <button data-dir="Down">↓ Down</button>
+        <button data-dir="Left">← Left</button>
+        <button data-dir="Right">→ Right</button>
+      </div>
+      <p class="help" style="margin-top:10px;">
+        Keyboard (Manual mode): <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>
+      </p>
+    </section>
+  </main>
+
+  <div class="mudra-badge">Created by Mudra</div>
+
+  <script>
+    // ── Config ──────────────────────────────────────────────────────────────
+    const WS_URL = "ws://127.0.0.1:8766";
+    const SUBSCRIBED_SIGNALS = ["nav_direction"];
+    const STEP = 56;            // px per swipe
+    const STAGE_PAD = 50;       // keep box inside stage
+
+    // ── Mode + connection state ─────────────────────────────────────────────
+    let mode = "manual";
+    let connectionState = "idle";
+    let socket = null;
+    let connToken = 0;
+    let reconnectTimer = null;
+    let reconnectIndex = 0;
+    let statusPollTimer = null;
+    const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 5000, 5000];
+    const STATUS_POLL_MS = 2000;
+
+    // ── App state ───────────────────────────────────────────────────────────
+    const pos = { x: 0, y: 0 };
+    const stageEl = document.getElementById("stage");
+    const boxEl = document.getElementById("box");
+    const posReadout = document.getElementById("posReadout");
+    const simPanel = document.getElementById("simPanel");
+    const connPill = document.getElementById("connPill");
+
+    // ── Signal handling ─────────────────────────────────────────────────────
+    function dispatch(msg) {
+      if (!msg || typeof msg !== "object") return;
+      switch (msg.type) {
+        case "nav_direction":     handleNavDirection(msg.data); break;
+        case "connection_status": handleConnectionStatus(msg.data); break;
+        case "status":            handleStatus(msg.data); break;
+      }
+    }
+
+    function handleNavDirection(data = {}) {
+      const dir = data.direction;
+      if (!dir || dir === "None") return;
+      const rect = stageEl.getBoundingClientRect();
+      const maxX = rect.width / 2 - STAGE_PAD;
+      const maxY = rect.height / 2 - STAGE_PAD;
+      if (dir === "Up")    pos.y = Math.max(-maxY, pos.y - STEP);
+      if (dir === "Down")  pos.y = Math.min( maxY, pos.y + STEP);
+      if (dir === "Left")  pos.x = Math.max(-maxX, pos.x - STEP);
+      if (dir === "Right") pos.x = Math.min( maxX, pos.x + STEP);
+      renderBox();
+    }
+
+    function renderBox() {
+      boxEl.style.transform = `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px))`;
+      posReadout.textContent = `x: ${Math.round(pos.x)} · y: ${Math.round(pos.y)}`;
+      boxEl.classList.remove("bump");
+      void boxEl.offsetWidth;
+      boxEl.classList.add("bump");
+    }
+
+    function handleStatus(data) {
+      if (mode !== "mudra") return;
+      const deviceState = data?.device?.state;
+      if (deviceState === "connected") setState("connected");
+      else                              setState("disconnected");
+    }
+
+    function handleConnectionStatus(data) {
+      if (mode !== "mudra") return;
+      if (data?.status === "disconnected") setState("disconnected");
+      if (data?.status === "connected" && socket?.readyState === 1) {
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }
+    }
+
+    // ── Socket lifecycle ────────────────────────────────────────────────────
+    function openSocket() {
+      closeSocket();
+      const myToken = ++connToken;
+      setState("connecting");
+      let ws;
+      try { ws = new WebSocket(WS_URL); }
+      catch (_) { setState("disconnected"); scheduleReconnect(); return; }
+
+      ws.onopen = () => {
+        if (myToken !== connToken) { try { ws.close(); } catch(_){} return; }
+        socket = ws;
+        SUBSCRIBED_SIGNALS.forEach(sig =>
+          ws.send(JSON.stringify({ command: "subscribe", signal: sig }))
+        );
+        ws.send(JSON.stringify({ command: "get_status" }));
+        startStatusPoll();
+      };
+      ws.onmessage = (e) => {
+        try { dispatch(JSON.parse(e.data)); } catch (_) {}
+      };
+      const onDead = () => {
+        if (myToken !== connToken) return;
+        socket = null;
+        stopStatusPoll();
+        setState("disconnected");
+        scheduleReconnect();
+      };
+      ws.onclose = onDead;
+      ws.onerror = onDead;
+    }
+
+    function closeSocket() {
+      connToken++;
+      if (socket) { try { socket.close(); } catch(_){} socket = null; }
+      cancelReconnect();
+      stopStatusPoll();
+    }
+
+    function scheduleReconnect() {
+      if (mode !== "mudra") return;
+      const delay = RECONNECT_DELAYS_MS[Math.min(reconnectIndex, RECONNECT_DELAYS_MS.length - 1)];
+      reconnectIndex++;
+      reconnectTimer = setTimeout(() => { if (mode === "mudra") openSocket(); }, delay);
+    }
+    function cancelReconnect() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      reconnectIndex = 0;
+    }
+
+    function startStatusPoll() {
+      stopStatusPoll();
+      statusPollTimer = setInterval(() => {
+        if (mode !== "mudra" || !socket || socket.readyState !== 1) return;
+        socket.send(JSON.stringify({ command: "get_status" }));
+      }, STATUS_POLL_MS);
+    }
+    function stopStatusPoll() {
+      if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
+    }
+
+    // ── Mode change ─────────────────────────────────────────────────────────
+    function resetContinuousState() {
+      // No continuous signals subscribed; box position is intentionally
+      // preserved across mode changes for usability.
+    }
+
+    function setMode(next) {
+      if (next === mode) return;
+      mode = next;
+      resetContinuousState();
+      if (mode === "mudra") openSocket(); else closeSocket();
+      simPanel.classList.toggle("disabled", mode === "mudra");
+      simPanel.querySelectorAll("button").forEach(b => {
+        b.setAttribute("aria-disabled", mode === "mudra" ? "true" : "false");
+        b.tabIndex = mode === "mudra" ? -1 : 0;
+      });
+      document.getElementById("modeManual").setAttribute("aria-checked", mode === "manual");
+      document.getElementById("modeMudra").setAttribute("aria-checked",  mode === "mudra");
+      document.getElementById("modeManual").classList.toggle("active", mode === "manual");
+      document.getElementById("modeMudra").classList.toggle("active",  mode === "mudra");
+      setState(mode === "manual" ? "idle" : "connecting");
+    }
+
+    function setState(next) {
+      connectionState = next;
+      connPill.classList.remove("conn-manual","conn-connecting","conn-connected","conn-disconnected");
+      if (mode === "manual")            { connPill.classList.add("conn-manual");        connPill.textContent = "Manual mode"; return; }
+      if (next === "connecting")        { connPill.classList.add("conn-connecting");    connPill.textContent = "Connecting…"; }
+      else if (next === "connected")    { connPill.classList.add("conn-connected");     connPill.textContent = "Connected"; reconnectIndex = 0; }
+      else if (next === "disconnected") { connPill.classList.add("conn-disconnected");  connPill.textContent = "Disconnected"; }
+    }
+
+    // ── Wire-up ─────────────────────────────────────────────────────────────
+    document.getElementById("modeManual").onclick = () => setMode("manual");
+    document.getElementById("modeMudra").onclick  = () => setMode("mudra");
+
+    simPanel.querySelectorAll("button[data-dir]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (mode !== "manual") return;
+        dispatch({
+          type: "nav_direction",
+          data: { direction: btn.dataset.dir, timestamp: Date.now() },
+          timestamp: Date.now(),
+        });
+      });
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (mode === "mudra") return;
+      const map = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
+      const dir = map[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      dispatch({
+        type: "nav_direction",
+        data: { direction: dir, timestamp: Date.now() },
+        timestamp: Date.now(),
+      });
+    });
+
+    // Initial paint
+    renderBox();
+    setState("idle");
+  </script>
+</body>
+</html>
