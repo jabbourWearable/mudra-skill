@@ -133,32 +133,32 @@ Pick the highest-scoring row. Ties resolved by:
 
 ### 5b. Select background
 
-Pick **exactly one** background from the 5-row catalog in Section 14 of `references/promt.md`:
-`starfield`, `gradient_sky`, `solid_studio`, `grid_cyber`, `skybox_texture`.
-
-Selection is **vibe-based** — read the prompt's mood and concept and pick the
-row whose `use_case` fits best. There is no scoring algorithm.
+**Default: `solid_studio`.** Use it for every generated app unless the user
+explicitly asks for a different background. Do NOT infer a background from
+the prompt's vibe, mood, or theme.
 
 Follow Section 14's rules, in priority order:
 
 1. **Inline override** `[bg=<id>]` — use verbatim, no inference.
-2. **Explicit phrase** in the prompt ("starfield", "sunset sky", "cyber grid", "in the forest", "synthwave") — pick the matching row.
-3. **Vibe match** — otherwise judge from the prompt:
-   - Calm / meditative / atmospheric / time-of-day → `gradient_sky`
-   - Space / cosmos / abstract objects / minimal stage → `starfield`
-   - UI panels / menus / dashboards / clean product showcase → `solid_studio`
-   - Game / arcade / cyberpunk / synthwave / neon → `grid_cyber`
-   - Outdoor / photoreal / immersive panorama → `skybox_texture`
-4. **`solid_studio` is reserved for UI-first scenes only.** Do not use it as a generic fallback — it's visually flat by design.
-5. **When undecidable**, prefer `gradient_sky` over `solid_studio`. Never default to `solid_studio` for a non-UI prompt.
+2. **Explicit naming by the user** — only if the user names a catalog background out loud, switch to it:
+   - "starfield" / "stars" / "space background" → `starfield`
+   - "gradient sky" / "sky dome" / "sunset sky" / "dawn sky" → `gradient_sky`
+   - "studio" / "solid studio" / "neutral background" → `solid_studio`
+   - "cyber grid" / "grid" / "synthwave background" / "neon grid" → `grid_cyber`
+   - "skybox" / "photo background" / "outdoor panorama" / "360 photo" → `skybox_texture`
+   Words like "in space", "at night", "in a forest", "cyberpunk vibe" are
+   **theme cues, not background requests** — they do NOT change the default.
+3. **Anything else** → `solid_studio`. This is the universal fallback.
 
-**Examples**:
-- "solar system" → `starfield`
-- "meditation timer" → `gradient_sky`
+**Examples** (note inverted from previous policy):
+- "solar system" → `solid_studio` (theme cue only — no explicit bg request)
+- "meditation timer" → `solid_studio`
 - "spatial menu" / "ui dashboard" → `solid_studio`
-- "cyberpunk drone game" → `grid_cyber`
-- "forest walkthrough" → `skybox_texture`
-- "a counter / a tool" (no clear vibe) → `gradient_sky` (not `solid_studio`)
+- "cyberpunk drone game" → `solid_studio` (theme cue only)
+- "forest walkthrough" → `solid_studio` (theme cue only)
+- "a counter / a tool" → `solid_studio`
+- "solar system with a **starfield** background" → `starfield` (user named it)
+- "[bg=grid_cyber] drone game" → `grid_cyber` (inline override)
 
 ### 6. Adapt the template with Mudra bindings
 

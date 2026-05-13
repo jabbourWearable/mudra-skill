@@ -13,6 +13,8 @@ claude.md
 .claude/skills/*
 !.claude/skills/mudra-xr/
 !.claude/skills/mudra-master/
+!.claude/skills/mudra-xr-2/
+!.claude/skills/mudra-xr-2/references/xrpromt.md
 
 specs/
 
@@ -20,3 +22,5 @@ full-html-templatesMD/
 
 docs.json
 ws-tools/
+
+index.html

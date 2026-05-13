@@ -841,23 +841,28 @@ catalog below inside `init()`, before adding any other scene content. The
 helper is a method on the `xb.Script` subclass — copy its body into the class
 and call it from `init()` first thing.
 
-### Selection (vibe-based)
+### Selection (user-request-driven)
 
-Read the prompt's vibe and pick the **one** row whose use-case best fits the
-mood and concept. There is no keyword-scoring algorithm — use judgment.
+**Default background: `solid_studio`.** Use it for every generated app unless
+the user explicitly asks for a different one. Do NOT infer a background from
+the prompt's vibe, mood, or theme — vibe-matching is disabled.
 
 **Rules, in priority order:**
 
-1. **Inline override** — if the prompt contains `[bg=<id>]` (e.g. `[bg=starfield]`), use it verbatim, no inference.
-2. **Explicit phrase** — if the prompt names a background ("starfield", "sunset sky", "cyber grid", "in the forest", "synthwave", "outdoor photo"), pick the matching row.
-3. **Vibe match** — otherwise pick the row whose use-case best matches the prompt:
-   - Calm / meditative / atmospheric / emotional / time-of-day → `gradient_sky`
-   - Space / cosmos / abstract object scenes / minimal stage → `starfield`
-   - UI panels / menus / dashboards / clean product showcase → `solid_studio`
-   - Game / arcade / cyberpunk / synthwave / neon / energetic → `grid_cyber`
-   - Outdoor / photoreal / immersive real-world panorama → `skybox_texture`
-4. **`solid_studio` is reserved for UI-first scenes.** It's visually flat by design — only use it when the app is genuinely about menus, dashboards, panels, or product showcases where the background should disappear behind the chrome. Do **not** use it as a generic fallback.
-5. **When genuinely undecidable**, prefer `gradient_sky` (broadly flattering, atmospheric). Never default to `solid_studio` for a non-UI prompt.
+1. **Inline override** — if the prompt contains `[bg=<id>]` (e.g. `[bg=starfield]`), use that id verbatim, no inference.
+2. **Explicit naming by the user** — only if the user names a catalog background out loud, use that row:
+   - "starfield" / "stars" / "space background" → `starfield`
+   - "gradient sky" / "sky dome" / "sunset sky" / "dawn sky" → `gradient_sky`
+   - "studio" / "solid studio" / "neutral background" → `solid_studio`
+   - "cyber grid" / "grid" / "synthwave background" / "neon grid" → `grid_cyber`
+   - "skybox" / "photo background" / "outdoor panorama" / "360 photo" → `skybox_texture`
+   Match only direct, unambiguous mentions. Words like "in space", "at night",
+   "in a forest", "cyberpunk vibe" are **theme cues, not background requests** —
+   they do NOT change the default.
+3. **Anything else** — use `solid_studio`. This is the universal fallback.
+
+Inverted from previous policy: `solid_studio` is now the universal default
+(no longer reserved for UI-first scenes). Vibe-based inference is removed.
 
 ### Catalog
 
@@ -865,7 +870,7 @@ mood and concept. There is no keyword-scoring algorithm — use judgment.
 |----|-----------------|----------------------|----------------|
 | `starfield` | Deep-space, astronomy, cosmos, abstract object scenes, minimal stage | `0_basic`, `8_objects`, `lighting` | hide |
 | `gradient_sky` | Open-air, calm, meditative, emotional, atmospheric, time-of-day | `0_basic`, `rain`, `lighting` | hide |
-| `solid_studio` | UI panels, dashboards, clean product showcases (UI-first only) | `1_ui`, `uikit`, `ui`, `virtual-screens` | keep |
+| `solid_studio` | **Default for every app.** Neutral, low-distraction backdrop that works for UI, tools, games, and generic concepts alike | every template | keep |
 | `grid_cyber` | Synthwave, cyberpunk, arcade, neon, energetic games | `0_basic`, `ballpit`, `drone`, `balloonpop` | hide |
 | `skybox_texture` | Photoreal, immersive, outdoor, real-world panorama | `0_basic`, `3_depth`, `8_objects` | hide |
 
@@ -956,19 +961,49 @@ applyBackground_gradient_sky() {
 }
 
 // ── 3. Solid Studio ───────────────────────────────────────────────────────
+// Photo-studio "seamless cyclorama" look — bright neutral dome that fades
+// smoothly into a light grey floor, so the horizon line never reads as
+// a hard edge. This is the universal default backdrop.
 applyBackground_solid_studio() {
-  // Dark neutral dome
-  const domeGeom = new THREE.SphereGeometry(80, 32, 16);
-  const domeMat = new THREE.MeshBasicMaterial({ color: 0x1a1a22, side: THREE.BackSide });
+  // Soft seamless dome — gradient from near-white at top to floor-grey at horizon
+  const domeGeom = new THREE.SphereGeometry(80, 48, 24);
+  const domeMat = new THREE.ShaderMaterial({
+    uniforms: {
+      topColor:    { value: new THREE.Color(0xf6f7f9) },  // near-white at top
+      bottomColor: { value: new THREE.Color(0xc8cad0) },  // matches floor near horizon
+    },
+    vertexShader: `
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      varying vec3 vWorldPosition;
+      void main() {
+        float h = clamp(normalize(vWorldPosition).y, 0.0, 1.0);
+        gl_FragColor = vec4(mix(bottomColor, topColor, smoothstep(0.0, 0.55, h)), 1.0);
+      }`,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
   this.add(new THREE.Mesh(domeGeom, domeMat));
 
-  // Subtle floor for grounding
-  const floorGeom = new THREE.PlaneGeometry(10, 10);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a2a32, roughness: 0.9, metalness: 0.1 });
+  // Large light floor — extends past the user's typical view so its edge
+  // hides inside the dome's bottom band, eliminating the horizon line.
+  const floorGeom = new THREE.PlaneGeometry(60, 60);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xc8cad0, roughness: 0.95, metalness: 0.0 });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = 0;
   this.add(floor);
+
+  // Soft fill light so scene meshes don't read flat against the bright backdrop.
+  // (User-added lights in init() still apply on top of this.)
+  this.add(new THREE.HemisphereLight(0xffffff, 0xc8cad0, 0.9));
 }
 
 // ── 4. Grid / Cyber ───────────────────────────────────────────────────────
@@ -1022,12 +1057,12 @@ Call the chosen helper as the first line of `init()`:
 ```js
 class MainScript extends xb.Script {
   init() {
-    this.applyBackground_starfield();           // <-- exactly one background call
+    this.applyBackground_solid_studio();        // <-- default; switch only on explicit user request
     this.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2));
     // ... rest of scene setup
   }
 
-  applyBackground_starfield() { /* body copied from catalog */ }
+  applyBackground_solid_studio() { /* body copied from catalog */ }
 }
 ```
 
