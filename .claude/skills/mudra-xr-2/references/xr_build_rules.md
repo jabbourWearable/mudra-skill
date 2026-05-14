@@ -21,13 +21,14 @@ This document is the canonical reference for the `mudra-xr-2` Claude Code skill.
 - §12 — Theme + Badge
 - §13 — Seed Catalog + Scoring Algorithm
 - §14 — Seed Lookup Procedure in vendored `xrpromt.md`
-- §15 — Background Catalog
+- §15 — Background Lockdown (XR Blocks default only)
 - §16 — Import-Map Rules
 - §17 — AI-enabled Seed Gating
 - §18 — Mode Toggle DOM + Behavior
 - §19 — Status Indicator + Band-State Polling
 - §20 — Vendoring Provenance
-- §21 — Onboarding Overlay (every load)
+- §21 — Onboarding Overlay (every load) + AI-app extension
+- §22 — Visible AI Chat I/O (mandatory when `usesAI`)
 
 ---
 
@@ -579,9 +580,11 @@ Before writing the output HTML, verify all items. If any fails: regenerate once 
 | 7 | Keyboard bindings | `window.addEventListener('keydown', …, { capture: true })` present; `event.stopPropagation()` on every Mudra-claimed key; zero bindings on §7 reserved keys EXCEPT Direction-mode arrow keys |
 | 8 | Combined top bar | **Single** `<div id="topbar">` containing the mode toggle on the left and the connection pill `<div id="mudra-status">` on the right (per §18 + §19); NO separate top-left or top-right elements; Manual is the default on load; pill text states are exactly `Manual mode` / `Connecting…` / `Connected` / `Disconnected`; band-state-driven (per §19); toggle remains clickable when disconnected |
 | 9 | No disconnect overlay | No banner / toast / modal / inline alert for disconnect — the connection pill in `#topbar` is the only indicator (spec FR-012) |
-| 10 | Onboarding overlay | `<div id="onboarding-overlay">` present (per §21); shows on every page load, no localStorage skip; four content slots (emoji+title, description, controls with `<span class="kbd">` hint, CTA label) are bespoke per app — NOT literal placeholder strings; CTA click + `Escape` key both dismiss the overlay |
-| 11 | Background | **Default path**: zero `applyBackground_*` methods, zero background calls in `init()`, `options.simulator.scenePath` untouched — the XR Blocks default room renders. **Opt-in path** (user explicitly named a catalog entry or used `[bg=<id>]`): exactly one `applyBackground_<id>()` method, called as the first line of `init()`, id matches one of the five catalog rows in §15, `options.simulator.scenePath = null` iff the background is immersive |
-| 12 | Badge + AI key safety | Exactly one `<div class="mudra-badge">` containing the literal text `Created by Mudra` (no variants — spec FR-014). If the seed is AI-enabled (§17): zero API-key strings in source (regex scan `/sk-[A-Za-z0-9_-]{32,}|AIza[A-Za-z0-9_-]{35}/` returns zero matches); the literal `const API_KEY = "";` is present |
+| 10 | Onboarding overlay | `<div id="onboarding-overlay">` present (per §21); shows on every page load, no localStorage skip; four content slots (emoji+title, description, controls with `<span class="kbd">` hint, CTA label) are bespoke per app — NOT literal placeholder strings; CTA click + `Escape` key both dismiss the overlay. **If `usesAI`**: the overlay contains a fourth `.ob-body` step `#ob-step-ai` per §21 AI-app extension, the CTA is disabled until the AI key input matches `/^AIza[\w-]{30,}$/`, and the overlay cannot be dismissed without a valid key in `sessionStorage` |
+| 11 | Background lockdown | ZERO `applyBackground_*` methods, ZERO background calls in `init()`, NO `options.simulator.scenePath` line anywhere. XR Blocks default room is the only allowed environment (§15) |
+| 12 | Badge + AI key safety | Exactly one `<div class="mudra-badge">` containing the literal text `Created by Mudra` (no variants — spec FR-014). If the seed is AI-enabled (§17): regex scan `/AIza[A-Za-z0-9_-]{30,}\|sk-[A-Za-z0-9_-]{32,}/` returns zero matches; the key is read ONLY from `sessionStorage.getItem('mudra.gemini.apiKey')`; ZERO `prompt(` calls for the key; ZERO `localStorage` references |
+| 12a | Visible AI chat I/O | If `usesAI` (§22): the 3D scene renders BOTH the user input echo AND the AI response as visible text; a fixed bespoke Purpose line is present; when the key is `null`, the response slot shows `Set up AI in the welcome panel` and NO Gemini call is made; TTS (if present) supplements rather than replaces visible text |
+| 12b | Gemini model pin | If the app calls `generativelanguage.googleapis.com/v1beta/models/<id>:generateContent`, the captured `<id>` MUST equal `gemini-2.5-flash` — no preview / dated / `-latest` aliases (e.g. `gemini-2.5-flash-preview-09-2025`, `gemini-1.5-flash-latest`). Live API (`xb.core.ai.startLiveSession`) and image-gen (`gemini-2.5-flash-image`) are the only exceptions, and only when the app's purpose requires them |
 | 13 | Bespoke palette | A `:root { ... }` block defines all nine canonical CSS variables (`--bg`, `--card`, `--primary`, `--accent`, `--text`, `--text-secondary`, `--success`, `--warning`, `--error`) with values picked appropriate to the app concept (per §12). The Mudra dark theme defaults are NOT used unless the concept genuinely calls for them. All chrome (`#topbar`, `#mudra-sim`, `#onboarding-overlay`, `.mudra-badge`) references the variables, not hard-coded hex values. Font is Poppins via `font-family: 'Poppins', system-ui, sans-serif`. |
 
 ### File collision rule
@@ -880,196 +883,41 @@ grep -n "^### Template: 2_hands$" references/xrpromt.md
 
 ---
 
-## §15 — Background Catalog
+## §15 — Background Lockdown (XR Blocks default only)
 
-**Default: no background helper.** Most generated apps MUST leave XR Blocks's default room as-is — that room (visible in nearly every seed template in `references/xrpromt.md`) provides the studio walls, lighting, and spatial grounding users expect. Adding a custom dome / floor / shader is opt-in only, and only when the user explicitly asks for it.
+**Custom backgrounds are forbidden.** Every generated XR app uses the XR
+Blocks default room and nothing else. There is no catalog, no helper, no
+override, no `[bg=...]` tag, no `scenePath` override.
 
-Theme cues like "in space", "at night", "cyberpunk vibe" are NOT background requests — they are scene-tone cues only and MUST NOT trigger a background override.
+### Hard rules — apply unconditionally
 
-### Priority order
+1. The `xb.Script` subclass MUST NOT contain any `applyBackground_*` method.
+2. `init()` MUST NOT call any background helper. It starts with lights,
+   meshes, and Mudra wiring.
+3. The entry point MUST NOT set `options.simulator.scenePath` — not to
+   `null`, not to a path. Leave it alone so XR Blocks renders its default
+   room.
+4. No standalone environment domes/floors/skies: no `THREE.SphereGeometry`
+   skybox `Mesh`, no `THREE.Points` starfield, no `THREE.GridHelper`
+   environment floor, no equirectangular `TextureLoader().load(...)` for
+   background purposes. (Per-scene geometry the app itself needs is fine —
+   the ban is on standalone background environments.)
+5. Prompt cues like "in space", "starfield", "sunset sky", "cyberpunk
+   vibe", "with a forest backdrop", and even literal `[bg=<id>]` tags MUST
+   be IGNORED for background purposes. They may still inform template /
+   motion-mode selection.
+6. If the user explicitly insists on a custom background, decline and
+   remind them that the skill is locked to the XR Blocks default room.
 
-1. Inline `[bg=<id>]` override — use verbatim. Reject unknown ids with the valid-id list.
-2. Explicit naming by the user:
-   - "starfield" / "stars" / "space background" → `starfield`
-   - "gradient sky" / "sky dome" / "sunset sky" / "dawn sky" → `gradient_sky`
-   - "studio" / "solid studio" / "neutral background" / "white background" → `solid_studio`
-   - "cyber grid" / "grid" / "synthwave background" / "neon grid" → `grid_cyber`
-   - "skybox" / "photo background" / "outdoor panorama" / "360 photo" → `skybox_texture`
-3. **Anything else → no background helper.** Do not add any `applyBackground_*` method to the class. Do not call any background function from `init()`. Do not set `options.simulator.scenePath`. The XR Blocks default room renders unmodified.
+### Pre-write regex (checklist §8 item 11)
 
-### Five catalog rows
+The generated source MUST satisfy ALL of the following:
 
-For each: one `applyBackground_<id>()` method copied verbatim into the `xb.Script` subclass; called as the **first line** of `init()` before lights, meshes, or Mudra wiring.
+- `/applyBackground_/` → zero matches.
+- `/options\.simulator\.scenePath/` → zero matches.
 
-#### `solid_studio` (default — universal)
-
-The default room from XR Blocks stays — do **not** set `options.simulator.scenePath`.
-
-```js
-applyBackground_solid_studio() {
-  const domeGeom = new THREE.SphereGeometry(80, 48, 24);
-  const domeMat = new THREE.ShaderMaterial({
-    uniforms: {
-      topColor:    { value: new THREE.Color(0xf6f7f9) },
-      bottomColor: { value: new THREE.Color(0xc8cad0) },
-    },
-    vertexShader: `
-      varying vec3 vWorldPosition;
-      void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vWorldPosition = wp.xyz;
-        gl_Position = projectionMatrix * viewMatrix * wp;
-      }`,
-    fragmentShader: `
-      uniform vec3 topColor;
-      uniform vec3 bottomColor;
-      varying vec3 vWorldPosition;
-      void main() {
-        float h = clamp(normalize(vWorldPosition).y, 0.0, 1.0);
-        gl_FragColor = vec4(mix(bottomColor, topColor, smoothstep(0.0, 0.55, h)), 1.0);
-      }`,
-    side: THREE.BackSide,
-    depthWrite: false,
-  });
-  this.add(new THREE.Mesh(domeGeom, domeMat));
-
-  const floorGeom = new THREE.PlaneGeometry(60, 60);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0xc8cad0, roughness: 0.95, metalness: 0.0 });
-  const floor = new THREE.Mesh(floorGeom, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
-  this.add(floor);
-
-  this.add(new THREE.HemisphereLight(0xffffff, 0xc8cad0, 0.9));
-}
-```
-
-#### `starfield` (immersive — set `scenePath = null`)
-
-```js
-applyBackground_starfield() {
-  const starGeom = new THREE.BufferGeometry();
-  const N = 2000;
-  const positions = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const r = 40 + Math.random() * 40;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
-    positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
-    positions[i*3+2] = r * Math.cos(phi);
-  }
-  starGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, sizeAttenuation: true });
-  this.add(new THREE.Points(starGeom, starMat));
-
-  const domeGeom = new THREE.SphereGeometry(90, 32, 16);
-  const domeMat = new THREE.MeshBasicMaterial({ color: 0x000008, side: THREE.BackSide });
-  this.add(new THREE.Mesh(domeGeom, domeMat));
-}
-```
-
-#### `gradient_sky` (immersive — set `scenePath = null`)
-
-```js
-applyBackground_gradient_sky() {
-  const skyGeom = new THREE.SphereGeometry(80, 32, 16);
-  const skyMat = new THREE.ShaderMaterial({
-    uniforms: {
-      topColor:    { value: new THREE.Color(0x0077ff) },
-      bottomColor: { value: new THREE.Color(0xffaa44) },
-    },
-    vertexShader: `
-      varying vec3 vWorldPosition;
-      void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vWorldPosition = wp.xyz;
-        gl_Position = projectionMatrix * viewMatrix * wp;
-      }`,
-    fragmentShader: `
-      uniform vec3 topColor;
-      uniform vec3 bottomColor;
-      varying vec3 vWorldPosition;
-      void main() {
-        float h = normalize(vWorldPosition).y;
-        gl_FragColor = vec4(mix(bottomColor, topColor, smoothstep(-0.2, 0.8, h)), 1.0);
-      }`,
-    side: THREE.BackSide,
-    depthWrite: false,
-  });
-  this.add(new THREE.Mesh(skyGeom, skyMat));
-}
-```
-
-#### `grid_cyber` (immersive — set `scenePath = null`)
-
-```js
-applyBackground_grid_cyber() {
-  const domeGeom = new THREE.SphereGeometry(80, 32, 16);
-  const domeMat = new THREE.MeshBasicMaterial({ color: 0x050014, side: THREE.BackSide });
-  this.add(new THREE.Mesh(domeGeom, domeMat));
-
-  const grid = new THREE.GridHelper(40, 40, 0xff00ff, 0x00ffff);
-  grid.position.y = 0;
-  this.add(grid);
-
-  const horizonGeom = new THREE.RingGeometry(19.8, 20, 64);
-  const horizonMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
-  const horizon = new THREE.Mesh(horizonGeom, horizonMat);
-  horizon.rotation.x = -Math.PI / 2;
-  horizon.position.y = 0.01;
-  this.add(horizon);
-}
-```
-
-#### `skybox_texture` (immersive — set `scenePath = null`)
-
-```js
-applyBackground_skybox_texture(url = 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.jpg') {
-  const skyGeom = new THREE.SphereGeometry(80, 64, 32);
-  const skyMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
-  const sky = new THREE.Mesh(skyGeom, skyMat);
-  this.add(sky);
-
-  new THREE.TextureLoader().load(
-    url,
-    (tex) => {
-      tex.mapping = THREE.EquirectangularReflectionMapping;
-      tex.colorSpace = THREE.SRGBColorSpace;
-      skyMat.map = tex;
-      skyMat.color.set(0xffffff);
-      skyMat.needsUpdate = true;
-    },
-    undefined,
-    () => { skyMat.color.set(0x223344); skyMat.needsUpdate = true; }
-  );
-}
-```
-
-### Wiring rules
-
-1. **Default path (no user override and no explicit catalog name)**: include **zero** `applyBackground_*` methods. Do not call any background helper in `init()`. Do not set `options.simulator.scenePath`. The XR Blocks default room renders behind the scene — this is what almost every seed template in `xrpromt.md` does and what users expect.
-2. **Opt-in path (priority 1 or 2 triggered above)**: include **exactly one** `applyBackground_*` method in the `xb.Script` subclass and call it from the **first line** of `init()`. Copy the helper body verbatim — do not modify. Scene-specific tweaks (extra lights, fog) go in code that follows the helper call.
-3. Don't mix helpers.
-4. For immersive backgrounds (`starfield`, `gradient_sky`, `grid_cyber`, `skybox_texture`) when opted in — set `options.simulator.scenePath = null;` before `xb.init(options)` to hide XR Blocks' default room. The dome becomes the full environment.
-5. For `solid_studio` when opted in — do NOT set `scenePath`. The default room provides UI-friendly grounding behind the dome.
-
-```js
-// Default — most apps look like this (no background overrides):
-document.addEventListener('DOMContentLoaded', () => {
-  const options = new xb.Options();
-  xb.add(new MainScript());
-  xb.init(options);
-});
-
-// Opt-in (user explicitly named a catalog background):
-document.addEventListener('DOMContentLoaded', () => {
-  const options = new xb.Options();
-  // options.simulator.scenePath = null;  // only when bg is starfield/gradient_sky/grid_cyber/skybox_texture
-  xb.add(new MainScript());
-  xb.init(options);
-});
-```
+If either pattern matches, the file fails the pre-write checklist and is
+not written.
 
 ---
 
@@ -1135,10 +983,24 @@ AI-enabled seeds MUST be selected only when ONE of these conditions holds:
 
 When an AI-enabled seed IS selected:
 
-1. Include `const API_KEY = "";` (empty string literal) at the top of the module body. Wire it to `xb.ai` per the seed's existing pattern.
-2. Do NOT embed any key value anywhere in the file.
-3. The runtime UI should prompt the user for a key on first AI call (e.g. via a `prompt()` or in-DOM `<dialog>`) — never on page load.
-4. The pre-write checklist regex scan (`/sk-[A-Za-z0-9_-]{32,}|AIza[A-Za-z0-9_-]{35}/`) MUST return zero matches.
+1. The API key is **NEVER embedded** in the file. Pre-write regex scan
+   (`/AIza[A-Za-z0-9_-]{30,}|sk-[A-Za-z0-9_-]{32,}/`) MUST return zero matches.
+2. The key is obtained **exclusively through the onboarding overlay**
+   (§21) — not via `prompt()`, not via URL params, not via `localStorage`,
+   not lazily on first AI call.
+3. Storage: `sessionStorage` under the literal key `mudra.gemini.apiKey`
+   (per-tab; cleared on tab close). Read it with
+   `sessionStorage.getItem('mudra.gemini.apiKey')` and treat `null` as
+   "AI inert — show the placeholder, do not call Gemini".
+4. The overlay's primary CTA (Continue / Start) is **disabled** until
+   the input matches `/^AIza[\w-]{30,}$/`. While the key is missing, the
+   user CANNOT dismiss the overlay (Escape, `×` close, backdrop click all
+   no-op until a valid key is entered and written). Once a valid key is
+   in `sessionStorage`, the overlay returns to normal dismiss behavior
+   on subsequent loads.
+5. The app MUST also satisfy §22 (Visible AI Chat I/O): on-screen
+   rendering of the user input AND the AI response, plus a fixed
+   one-sentence Purpose line authored from the user's prompt.
 
 ### Decline mode
 
@@ -1600,3 +1462,146 @@ When verifying generated output, in addition to the §8 items 1–12, also check
 - Step 2's bullet list contains exactly one `<li>` per signal binding the app handles (no more, no less).
 - No hero `<img>` / `<video>` / `<canvas>` inside the panel.
 - The overlay does NOT use a `localStorage` flag to skip future loads.
+
+### AI-app extension — insert step 1.5 "AI Setup" (mandatory when `usesAI`)
+
+For AI apps only, the overlay grows to **four** `.ob-body` containers
+(`#ob-step-1`, `#ob-step-ai`, `#ob-step-2`, `#ob-step-3`). The step
+counter shows `1 of 4` … `4 of 4` (or skip the counter from the AI step;
+either is fine as long as it is consistent).
+
+#### `#ob-step-ai` DOM
+
+```html
+<section class="ob-body" id="ob-step-ai" hidden>
+  <h3>🔑 AI Setup</h3>
+  <p class="ob-lede">
+    This app uses Google Gemini. Paste your API key to continue —
+    it lives only in this browser tab (<code>sessionStorage</code>)
+    and is sent only to Google's API.
+    <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Get a key →</a>
+  </p>
+  <input
+    id="ob-ai-key"
+    type="password"
+    autocomplete="off"
+    spellcheck="false"
+    placeholder="Paste Gemini API key (starts with AIza…)"
+    aria-label="Gemini API key"
+  />
+  <p class="ob-ai-hint" data-role="hint"></p>
+</section>
+```
+
+Bespoke CSS additions (inside the existing onboarding `<style>` block,
+using the same palette variables already in use):
+
+```css
+#ob-step-ai input {
+  width: 100%; box-sizing: border-box;
+  padding: 10px 12px; border: 1px solid var(--text-secondary);
+  border-radius: 8px; background: var(--bg); color: var(--text);
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+#ob-step-ai input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+#ob-step-ai .ob-ai-hint { margin: 6px 2px 0; font-size: 0.75rem; color: var(--error); min-height: 1em; }
+.ob-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+```
+
+#### JS wiring (extends the existing multi-step IIFE)
+
+```js
+const KEY_NAME  = "mudra.gemini.apiKey";
+const KEY_REGEX = /^AIza[\w-]{30,}$/;
+
+const hasValidStoredKey = () =>
+  KEY_REGEX.test((sessionStorage.getItem(KEY_NAME) || "").trim());
+
+const aiStep = document.getElementById("ob-step-ai");
+if (aiStep) {
+  const input = aiStep.querySelector("#ob-ai-key");
+  const hint  = aiStep.querySelector('[data-role="hint"]');
+  const cta   = document.querySelector("#onboarding-overlay .ob-cta");
+
+  // If a valid key is already stored, skip the AI step entirely on this load.
+  if (hasValidStoredKey()) {
+    aiStep.dataset.skip = "true";
+  } else {
+    const refresh = () => {
+      const v = input.value.trim();
+      const ok = KEY_REGEX.test(v);
+      cta.disabled = (currentStep === "ob-step-ai") ? !ok : cta.disabled;
+      hint.textContent = (!v || ok) ? "" : "Key should start with \"AIza\" and be ~39 chars.";
+    };
+    input.addEventListener("input", refresh);
+
+    // When the user clicks Continue on the AI step, persist the key.
+    cta.addEventListener("click", () => {
+      if (currentStep !== "ob-step-ai") return;
+      const v = input.value.trim();
+      if (KEY_REGEX.test(v)) sessionStorage.setItem(KEY_NAME, v);
+    }, { capture: true });
+
+    // Block dismissal while the key is missing.
+    const blockClose = (e) => {
+      if (hasValidStoredKey()) return;
+      e.preventDefault(); e.stopPropagation();
+      input.focus();
+    };
+    document.querySelector("#onboarding-overlay .ob-close")?.addEventListener("click", blockClose, { capture: true });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !hasValidStoredKey()) blockClose(e);
+    }, { capture: true });
+  }
+}
+```
+
+The step-order array used by the multi-step navigator MUST include
+`"ob-step-ai"` after `"ob-step-1"`. The skill flag `usesAI` is the only
+condition under which `#ob-step-ai` is rendered into the DOM in the
+first place — non-AI apps emit the original three-step overlay
+unchanged.
+
+---
+
+## §22 — Visible AI Chat I/O (mandatory when `usesAI`)
+
+Every AI-using app MUST render the conversation as on-screen text inside
+the 3D scene — TTS / `speechSynthesis` is optional, never a substitute.
+
+### Required visible elements
+
+| Element | What it shows | How to render |
+|---------|---------------|---------------|
+| **Purpose line** | One short sentence stating what the app does, authored from the user's prompt at generation time. Visible at all times. | Troika `Text` or a top row in an `xb.SpatialPanel`. |
+| **User input echo** | The latest user message (speech transcript OR typed input). Updates immediately on capture. | Highlighted/bordered row in the panel, prefixed `💬 You: …`. |
+| **AI response** | The most recent AI reply in full readable text. Wraps / scrolls. | `xb.ScrollingTroikaTextView` or a tall row in the panel, prefixed `🤖 AI: …`. |
+| **Listening / Thinking indicator** | Idle / listening / thinking states distinguishable at a glance. | Single-word status text + avatar pulse. |
+
+### Rules
+
+1. **Both sides of every exchange must be visible.** Voice-only output
+   is a checklist failure. The chat panel must accumulate at least the
+   last user turn AND the last AI turn simultaneously.
+2. **The Purpose line is fixed** for the lifetime of the app. Author it
+   from the user's original prompt — never use a generic placeholder.
+3. **Typed input fallback**: when `webkitSpeechRecognition` /
+   `SpeechRecognition` are missing, render an `<input type="text">` in
+   an XR Blocks panel OR a 2D overlay below the simulator panel. Both
+   echo and reply still render in the 3D scene.
+4. **No-key placeholder**: when
+   `sessionStorage.getItem('mudra.gemini.apiKey')` is `null`, the chat
+   panel renders the literal text `Set up AI in the welcome panel` in
+   the response slot — do not call Gemini.
+5. **TTS** (`speechSynthesis`) is allowed but optional. If used, it
+   speaks the AI response in addition to displaying it. Never as a
+   replacement.
+
+### Pre-write checklist additions (referenced from §8)
+
+- The chat panel exists in the 3D scene and renders BOTH user input
+  echo AND AI response text.
+- The Purpose line is non-empty and bespoke (not "AI Chat" or another
+  generic).
+- No code path calls Gemini when the key is `null`.
+- No code path replaces visible text with TTS-only output.

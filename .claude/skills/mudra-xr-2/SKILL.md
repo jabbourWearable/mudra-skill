@@ -90,11 +90,11 @@ Read the vendored `references/agent_protocol.json` for any protocol detail not s
 Extract from the user's prompt:
 
 - **`templateOverride`**: an inline `[template=<id>]` tag (e.g., `[template=2_hands]`). Strip from the prompt before further inference.
-- **`bgOverride`**: an inline `[bg=<id>]` tag (e.g., `[bg=starfield]`). Strip from the prompt.
+- **`[bg=<id>]`**: **DEPRECATED.** Silently strip from the prompt. Ignore its value — backgrounds are locked to the XR Blocks default room (§15).
 - **`motionModeHint`**: an inline `[mode=pointer|direction|imu|none]` tag. Strip from the prompt.
 
 If duplicate keys appear in the prompt, the last occurrence wins.
-Unknown ids in any of the three tags MUST be rejected with the catalog's valid-id list (`xr_build_rules.md` §13 for templates, §15 for backgrounds, modes are exactly `pointer|direction|imu|none`).
+Unknown ids in `[template=<id>]` or `[mode=...]` MUST be rejected with the catalog's valid-id list (`xr_build_rules.md` §13 for templates; modes are exactly `pointer|direction|imu|none`). `[bg=<id>]` is never rejected — it is always silently stripped and ignored.
 
 ### 3. Infer Mudra signals
 
@@ -140,15 +140,22 @@ Use the heading-anchored lookup from `xr_build_rules.md` §14:
 3. Capture the first ```` ```html ... ``` ```` fenced block that follows the heading.
 4. That block is the seed `source_html` to adapt.
 
-### 5b. Select background
+### 5b. Background — locked to XR Blocks default
 
-**Default: no background helper applied** — the XR Blocks default studio room renders, which is what almost every seed template in `xrpromt.md` does and what users expect. Do NOT inject a custom dome/floor unless the user explicitly asks for one. Theme cues like "in space", "at night", "cyberpunk vibe" are NOT background requests.
+**Forbidden:** custom backgrounds. The XR Blocks default room is the only
+allowed environment. There is no catalog, no `[bg=...]` override, no
+`applyBackground_*` helper, no `scenePath` override.
 
-Follow `xr_build_rules.md` §15:
+Apply unconditionally:
 
-1. Inline override `[bg=<id>]` — opt in to the named catalog entry verbatim, no inference.
-2. Explicit naming by the user (e.g. "starfield background", "with a sunset sky", "solid studio backdrop") — opt in to that catalog entry.
-3. Anything else → **no `applyBackground_*` method**, no call from `init()`, no `scenePath` override. XR Blocks renders its default room.
+1. Do NOT add any `applyBackground_*` method.
+2. Do NOT call any background helper from `init()`.
+3. Do NOT set `options.simulator.scenePath`.
+4. Ignore prompt cues like "starfield", "sunset sky", "cyberpunk vibe",
+   `[bg=...]` for background purposes. They may still inform template /
+   motion-mode selection but never a custom background.
+5. If the user explicitly insists on a custom background, decline and
+   remind them that this skill is locked to the XR Blocks default room.
 
 ### 6. Adapt the template with Mudra bindings
 
@@ -156,12 +163,9 @@ Starting from the seed HTML:
 
 1. Add the `MudraClient` class (`xr_build_rules.md` §4) verbatim inside `<script type="module">`. Manual default; no auto-connect; `setMode()`-driven; passive mock; 2-second `get_status` poll while in Mudra mode.
 2. Instantiate `mudra` at module scope.
-3. **Background**: if step 5b selected a catalog entry, copy the `applyBackground_<id>()` body from `xr_build_rules.md` §15 into the `xb.Script` subclass. If step 5b selected "no background helper" (the default for most prompts), skip this — do NOT add any `applyBackground_*` method.
-4. If a background helper was added in step 3, call `this.applyBackground_<id>()` as the **first line** of `init()` — before lights, meshes, or Mudra wiring. If no helper was added, skip this — `init()` starts directly with the scene content.
-4a. Configure XR Blocks room per §15:
-   - **No background helper (default path)**: leave `options.simulator.scenePath` alone. XR Blocks renders its default room — this is what nearly every seed template in `xrpromt.md` does.
-   - **Immersive backgrounds** (`starfield`, `gradient_sky`, `grid_cyber`, `skybox_texture`): add `options.simulator.scenePath = null;` before `xb.init(options)` to hide the default room so the dome is the full environment.
-   - **`solid_studio`** (opt-in): do **not** set `scenePath`. The default room provides UI-friendly spatial grounding behind the studio dome.
+3. **No background helper.** Do NOT add any `applyBackground_*` method to the `xb.Script` subclass.
+4. **No background call from `init()`.** `init()` starts directly with scene content (lights, meshes, Mudra wiring).
+4a. **No `scenePath` override.** Leave `options.simulator.scenePath` alone — XR Blocks renders its default room, the only allowed environment.
 5. Call `mudra.subscribe('<signal>')` for every required signal inside `init()`.
 6. Wire `mudra.on('<signal>', handler)` for each subscribed signal using the binding patterns in `xr_build_rules.md` §3 (Direction mode), and the per-signal best practices in `agent_protocol.json.signals.<name>.best_practices` for `gesture` and `button`.
 7. Add the **combined top-center top bar** `<div id="topbar">` (`xr_build_rules.md` §18 + §19) containing the mode toggle on the left (`Manual` + `Mudra` buttons, Manual default) and the connection pill on the right. Wire both buttons via `mudra.setMode(...)`. The connection pill text is `Manual mode` / `Connecting…` / `Connected` / `Disconnected`. **Never render a separate disconnect overlay/banner/toast.**
@@ -171,6 +175,23 @@ Starting from the seed HTML:
 11. Add the footer badge `<div class="mudra-badge">` using the literal text `Created by Mudra` (`xr_build_rules.md` §12). The badge styling uses the bespoke palette CSS variables — never variants of the text.
 12. **Pick a bespoke palette appropriate to the app concept** (`xr_build_rules.md` §12) and emit it as a `:root { --bg: …; --card: …; --primary: …; --accent: …; --text: …; --text-secondary: …; --success: …; --warning: …; --error: … }` block at the top of `<style>`. The variable *names* are canonical; the *values* are bespoke per app. Apply them to `#topbar`, `#mudra-sim`, `#onboarding-overlay`, `.mudra-badge`, and any app-specific chrome.
 13. Strip import-map entries the adapted app does not actually `import` (`xr_build_rules.md` §16). All retained URLs must match the Reference Map in `references/xrpromt.md` verbatim. **Never strip the four mandatory entries** (`three`, `three/addons/`, `xrblocks`, `xrblocks/addons/`).
+14. **If `usesAI`** (AI-enabled seed per `xr_build_rules.md` §17):
+    - **Onboarding extension** (`xr_build_rules.md` §21 AI-app section):
+      add a `#ob-step-ai` `.ob-body` between step 1 and step 2 containing
+      a `type="password"` input, explainer copy, and a "Get a key →" link.
+      Wire the multi-step IIFE so the CTA stays disabled until the input
+      matches `/^AIza[\w-]{30,}$/`, then write the trimmed value to
+      `sessionStorage.setItem('mudra.gemini.apiKey', value)`. Block
+      `Escape`, `×`, and backdrop dismissal while the key is missing.
+    - **Key read** (`xr_build_rules.md` §17): read the key once in
+      `init()` via `sessionStorage.getItem('mudra.gemini.apiKey')`. If
+      `null`, render the no-key placeholder and skip all Gemini calls.
+    - **Visible chat I/O** (`xr_build_rules.md` §22): render the user
+      input echo AND the AI response as on-screen text in the 3D scene
+      (`xb.ScrollingTroikaTextView`, troika `Text`, or an
+      `xb.SpatialPanel` row). Add a bespoke fixed Purpose line authored
+      from the user's prompt. Include a Listening / Thinking status
+      cue. TTS is optional and never replaces visible text.
 
 ### 7. Run the pre-write checklist
 

@@ -169,6 +169,7 @@ multiple samples match, prefer the simpler one.
 - Keyboard fallback
 - Responsive layout
 - **Theme: infer from the app concept — NEVER default to dark.** Design a custom color palette that matches the concept. The sample code uses dark colors — **ignore them**. Only use dark if the user says "dark" or the concept is inherently dark (space, nightclub, etc.).
+- **Gemini model pin** — if the app calls `https://generativelanguage.googleapis.com/v1beta/models/<id>:generateContent`, the captured `<id>` MUST equal `gemini-2.5-flash`. No preview / dated / `-latest` aliases (e.g. `gemini-2.5-flash-preview-09-2025`, `gemini-1.5-flash-latest`, `gemini-flash-latest`). Google retires preview aliases and the app then returns HTTP 404. Image-gen (`gemini-2.5-flash-image`) is the only exception, and only when image output is the app's purpose. If a different model is genuinely needed, ask the user first — never silently swap in a preview alias.
 
 ### Navigation sensitivity defaults (gentle / slow)
 
